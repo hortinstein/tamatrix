@@ -19,7 +19,7 @@ extern "C" {
 #endif
 	                         /* Compilation options:       */
 #define DEBUG             /* Compile debugging version  */
-/* #define LSB_FIRST */        /* Compile for low-endian CPU */
+#define LSB_FIRST        /* Compile for low-endian CPU */
 #define EXEC6502
                                /* Loop6502() returns:        */
 #define INT_NONE  0            /* No interrupt required      */

@@ -1,5 +1,6 @@
 #include "stdio.h"
 #include "tamaemu.h"
+#include <signal.h>
 
 void displayDram(uint8_t *ram) {
 	int x, y;
@@ -17,14 +18,20 @@ void displayDram(uint8_t *ram) {
 	}
 }
 
+Tamagotchi *tama;
+
+
+void sigintHdlr(int sig)  {
+	tama->cpu->Trace=1;
+}
 
 int main(int argc, char **argv) {
 	unsigned char **rom;
-	Tamagotchi *t;
+	signal(SIGINT, sigintHdlr);
 	rom=loadRoms();
-	t=tamaInit(rom);
+	tama=tamaInit(rom);
 	while(1) {
-		tamaRun(t, 8000000L/50);
-		displayDram(t->dram);
+		tamaRun(tama, 8000000L/50);
+		displayDram(tama->dram);
 	}
 }

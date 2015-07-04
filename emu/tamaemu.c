@@ -42,6 +42,7 @@ uint8_t ioRead(M6502 *cpu, register word addr) {
 		return t->bankSel;
 	} else {
 		printf("Unimplemented ioRd 0x%04X\n", addr);
+		cpu->Trace=1;
 		return 0xff;
 	}
 }
@@ -56,6 +57,7 @@ void ioWrite(M6502 *cpu, register word addr, register byte val) {
 		}
 	} else {
 		printf("unimplemented ioWr 0x%04X 0x%02X\n", addr, val);
+		cpu->Trace=1;
 	}
 }
 
@@ -78,6 +80,7 @@ uint8_t tamaReadCb(M6502 *cpu, register word addr) {
 		r=t->rom[0][addr-0xc000];
 	} else {
 		printf("TamaEmu: invalid read: addr 0x%02X\n", addr);
+		cpu->Trace=1;
 	}
 	printf("Rd 0x%04X 0x%02X\n", addr, r);
 	return r;
@@ -94,6 +97,7 @@ void tamaWriteCb(M6502 *cpu, register word addr, register byte val) {
 		ioWrite(cpu, addr, val);
 	} else {
 		printf("TamaEmu: invalid write: addr 0x%04X val 0x%02X\n", addr, val);
+		cpu->Trace=1;
 	}
 }
 
@@ -114,7 +118,6 @@ Tamagotchi *tamaInit(unsigned char **rom) {
 	tama->cpu->User=(void*)tama;
 	tama->bankSel=0;
 	Reset6502(tama->cpu);
-	tama->cpu->Trace=1;
 	return tama;
 }
 

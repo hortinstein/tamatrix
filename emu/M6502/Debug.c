@@ -12,6 +12,7 @@
 /**     commercially. Please, notify me, if you make any    **/   
 /**     changes to this file.                               **/
 /*************************************************************/
+#include "M6502.h"
 #ifdef DEBUG
 
 #include <stdio.h>
@@ -24,7 +25,7 @@ extern word VAddr;
 extern byte CURLINE;
 #endif
 
-#define RDWORD(A) (Rd6502(A+1)*256+Rd6502(A))
+#define RDWORD(A) (R->Rd6502(R, A+1)*256+R->Rd6502(R, A))
 
 enum AddressingModes { Ac=0,Il,Im,Ab,Zp,Zx,Zy,Ax,Ay,Rl,Ix,Iy,In,No };
 
@@ -79,27 +80,27 @@ static const byte Ads[512]=
 /** This function will disassemble a single command and      **/
 /** return the number of bytes disassembled.                 **/
 /**************************************************************/
-static int DAsm(char *S,word A)
+static int DAsm(M6502 *R, char *S,word A)
 {
   byte J;
   word B,OP,TO;
 
-  B=A;OP=Rd6502(B++)*2;
+  B=A;OP=R->Rd6502(R, B++)*2;
 
   switch(Ads[OP+1])
   {
     case Ac: sprintf(S,"%s a",Ops[Ads[OP]]);break;
     case Il: sprintf(S,"%s",Ops[Ads[OP]]);break;
 
-    case Rl: J=Rd6502(B++);TO=A+2+((J<0x80)? J:(J-256)); 
+    case Rl: J=R->Rd6502(R, B++);TO=A+2+((J<0x80)? J:(J-256)); 
              sprintf(S,"%s $%04X",Ops[Ads[OP]],TO);break;
 
-    case Im: sprintf(S,"%s #$%02X",Ops[Ads[OP]],Rd6502(B++));break;
-    case Zp: sprintf(S,"%s $%02X",Ops[Ads[OP]],Rd6502(B++));break;
-    case Zx: sprintf(S,"%s $%02X,x",Ops[Ads[OP]],Rd6502(B++));break;
-    case Zy: sprintf(S,"%s $%02X,y",Ops[Ads[OP]],Rd6502(B++));break;
-    case Ix: sprintf(S,"%s ($%02X,x)",Ops[Ads[OP]],Rd6502(B++));break;
-    case Iy: sprintf(S,"%s ($%02X),y",Ops[Ads[OP]],Rd6502(B++));break;
+    case Im: sprintf(S,"%s #$%02X",Ops[Ads[OP]],R->Rd6502(R, B++));break;
+    case Zp: sprintf(S,"%s $%02X",Ops[Ads[OP]],R->Rd6502(R, B++));break;
+    case Zx: sprintf(S,"%s $%02X,x",Ops[Ads[OP]],R->Rd6502(R, B++));break;
+    case Zy: sprintf(S,"%s $%02X,y",Ops[Ads[OP]],R->Rd6502(R, B++));break;
+    case Ix: sprintf(S,"%s ($%02X,x)",Ops[Ads[OP]],R->Rd6502(R, B++));break;
+    case Iy: sprintf(S,"%s ($%02X),y",Ops[Ads[OP]],R->Rd6502(R, B++));break;
 
     case Ab: sprintf(S,"%s $%04X",Ops[Ads[OP]],RDWORD(B));B+=2;break;
     case Ax: sprintf(S,"%s $%04X,x",Ops[Ads[OP]],RDWORD(B));B+=2;break;
@@ -124,7 +125,7 @@ byte Debug6502(M6502 *R)
   byte *P,F;
   int J,I,K;
 
-  DAsm(S,R->PC.W);
+  DAsm(R, S,R->PC.W);
 
   printf
   (
@@ -139,10 +140,10 @@ byte Debug6502(M6502 *R)
   printf
   (
     "AT PC: [%02X - %s]   AT SP: [%02X %02X %02X]\n",
-    Rd6502(R->PC.W),S,
-    Rd6502(0x0100+(byte)(R->S+1)),
-    Rd6502(0x0100+(byte)(R->S+2)),
-    Rd6502(0x0100+(byte)(R->S+3))
+    R->Rd6502(R, R->PC.W),S,
+    R->Rd6502(R, 0x0100+(byte)(R->S+1)),
+    R->Rd6502(R, 0x0100+(byte)(R->S+2)),
+    R->Rd6502(R, 0x0100+(byte)(R->S+3))
   );
 
   while(1)
@@ -197,9 +198,9 @@ byte Debug6502(M6502 *R)
 
       case 'V':
         printf("\n6502 Interrupt Vectors:\n");
-        printf("[$FFFC] INIT: $%04X\n",Rd6502(0xFFFC)+256*Rd6502(0xFFFD));
-        printf("[$FFFE] IRQ:  $%04X\n",Rd6502(0xFFFE)+256*Rd6502(0xFFFF));
-        printf("[$FFFA] NMI:  $%04X\n",Rd6502(0xFFFA)+256*Rd6502(0xFFFB));
+        printf("[$FFFC] INIT: $%04X\n",R->Rd6502(R, 0xFFFC)+256*R->Rd6502(R, 0xFFFD));
+        printf("[$FFFE] IRQ:  $%04X\n",R->Rd6502(R, 0xFFFE)+256*R->Rd6502(R, 0xFFFF));
+        printf("[$FFFA] NMI:  $%04X\n",R->Rd6502(R, 0xFFFA)+256*R->Rd6502(R, 0xFFFB));
         break;
 
       case 'M':
@@ -212,10 +213,10 @@ byte Debug6502(M6502 *R)
           {
             printf("%04X: ",Addr);
             for(I=0;I<16;I++,Addr++)
-              printf("%02X ",Rd6502(Addr));
+              printf("%02X ",R->Rd6502(R, Addr));
             printf(" | ");Addr-=16;
             for(I=0;I<16;I++,Addr++)
-              printf("%c",isprint(Rd6502(Addr))? Rd6502(Addr):'.');
+              printf("%c",isprint(R->Rd6502(R, Addr))? R->Rd6502(R, Addr):'.');
             printf("\n");
           }
         }
@@ -230,7 +231,7 @@ byte Debug6502(M6502 *R)
           for(J=0;J<16;J++)
           {
             printf("%04X: ",Addr);
-            Addr+=DAsm(S,Addr);
+            Addr+=DAsm(R, S,Addr);
             printf("%s\n",S);
           }
         }
