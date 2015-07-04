@@ -38,27 +38,43 @@ void freeRoms(unsigned char **roms) {
 
 uint8_t ioRead(M6502 *cpu, register word addr) {
 	Tamagotchi *t=(Tamagotchi *)cpu->User;
+	TamaHw *hw=&t->hw;
 	if (addr==0x3000) {
-		return t->bankSel;
+		return hw->bankSel;
+	} else if (addr==0x3001) {
+		return hw->clkCtl;
 	} else {
 		printf("Unimplemented ioRd 0x%04X\n", addr);
-		cpu->Trace=1;
-		return 0xff;
+//		cpu->Trace=1;
+		return t->ioreg[addr-0x3000];
 	}
 }
 
 void ioWrite(M6502 *cpu, register word addr, register byte val) {
 	Tamagotchi *t=(Tamagotchi *)cpu->User;
+	TamaHw *hw=&t->hw;
 	if (addr==0x3000) {
 		if (val>20) {
 			printf("Unimplemented bank: 0x%02X\n", val);
 		} else {
-			t->bankSel=val;
+			printf("Bank switch %d\n", val);
+			hw->bankSel=val;
 		}
+	} else if (addr==0x3001) {
+		hw->clkCtl=val;
+	} else if (addr==0x3002) {
+		//32KHz ena
+	} else if (addr==0x3004) {
+		//wdt_clr
+	} else if (addr==0x3011) {
+		//port A dir
+	} else if (addr>=0x3040 && addr<0x304A) {
+		//LCD stuff
 	} else {
 		printf("unimplemented ioWr 0x%04X 0x%02X\n", addr, val);
-		cpu->Trace=1;
+//		cpu->Trace=1;
 	}
+	t->ioreg[addr-0x3000]=val;
 }
 
 void tamaHwTick(Tamagotchi *t) {
@@ -75,14 +91,14 @@ uint8_t tamaReadCb(M6502 *cpu, register word addr) {
 	} else if (addr>=0x3000 &&  addr<0x4000) {
 		r=ioRead(cpu, addr);
 	} else if (addr>=0x4000 &&  addr<0xc000) {
-		r=t->rom[t->bankSel][addr-0x4000];
+		r=t->rom[t->hw.bankSel][addr-0x4000];
 	} else if (addr>=0xc000) {
 		r=t->rom[0][addr-0xc000];
 	} else {
 		printf("TamaEmu: invalid read: addr 0x%02X\n", addr);
 		cpu->Trace=1;
 	}
-	printf("Rd 0x%04X 0x%02X\n", addr, r);
+//	printf("Rd 0x%04X 0x%02X\n", addr, r);
 	return r;
 }
 
@@ -116,7 +132,7 @@ Tamagotchi *tamaInit(unsigned char **rom) {
 	tama->cpu->Rd6502=tamaReadCb;
 	tama->cpu->Wr6502=tamaWriteCb;
 	tama->cpu->User=(void*)tama;
-	tama->bankSel=0;
+	tama->hw.bankSel=0;
 	Reset6502(tama->cpu);
 	return tama;
 }
@@ -132,6 +148,7 @@ void tamaRun(Tamagotchi *tama, int cycles) {
 		for (i=0; i<n; i++) {
 			tamaHwTick(tama);
 		}
+		cycles-=n;
 	}
 }
 

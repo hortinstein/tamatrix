@@ -1,14 +1,15 @@
 #include "stdio.h"
 #include "tamaemu.h"
 #include <signal.h>
+#include <stdlib.h>
 
 void displayDram(uint8_t *ram) {
 	int x, y;
 	int b;
 	char grays[]=" .*M";
 	printf("\033[1;1H");
-	for (y=0; y<32; x++) {
-		for (x=0; x<64; y++) {
+	for (y=0; y<32; y++) {
+		for (x=0; x<64; x++) {
 			b=ram[x+(y/4)*32];
 			b=(b>>((y&3)*2))&3;
 			putchar(grays[b]);
@@ -22,6 +23,7 @@ Tamagotchi *tama;
 
 
 void sigintHdlr(int sig)  {
+	if (tama->cpu->Trace) exit(1);
 	tama->cpu->Trace=1;
 }
 
