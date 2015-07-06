@@ -68,7 +68,20 @@
 #define R_INTCLRMI	0x3074
 #define R_NMICTL	0x3076
 #define R_LVCTL		0x3077
-//data regs omitted
+#define R_DATAX		0x3080
+#define R_DATAY		0x3081
+#define R_DATA0XH	0x3082
+#define R_DATA0XL	0x3083
+#define R_DATA0YH	0x3084
+#define R_DATA0YL	0x3085
+#define R_DATAXH0	0x3086
+#define R_DATAXL0	0x3087
+#define R_DATAYH0	0x3088
+#define R_DATAYL0	0x3089
+#define R_DATAXLXH	0x308A
+#define R_DATAYLYH	0x308B
+#define R_DATAXLYH	0x308C
+#define R_DATAYLXH	0x308D
 #define R_IFFPCLR	0x3090
 #define R_IF8KCLR	0x3093
 #define R_IF2KCLR	0x3094
@@ -121,6 +134,9 @@ typedef struct {
 	char ioreg[255];
 	TamaHw hw;
 	TamaLcd lcd;
+	int bkUnk;
+	int btnPressed;
+	int btnReleaseTm;
 } Tamagotchi;
 
 
@@ -129,6 +145,8 @@ void freeRoms(unsigned char **roms);
 
 Tamagotchi *tamaInit(unsigned char **rom);
 void tamaRun(Tamagotchi *tama, int cycles);
+void tamaToggleBkunk(Tamagotchi *t);
+void tamaPressBtn(Tamagotchi*t, int btn);
 
 
 #endif

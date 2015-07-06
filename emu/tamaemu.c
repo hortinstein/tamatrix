@@ -62,16 +62,37 @@ void freeRoms(unsigned char **roms) {
 	free(roms);
 }
 
+void tamaToggleBkunk(Tamagotchi *t) {
+	t->bkUnk=!t->bkUnk;
+}
+
+void tamaToggleBtn(Tamagotchi *t, int btn) {
+	TamaHw *hw=&t->hw;
+	if (btn<8) {
+		hw->portAdata^=(1<<(btn));
+	} else if (btn<16) {
+		hw->portBdata^=(1<<(btn-8));
+	} else {
+		hw->portCdata^=(1<<(btn-16));
+	}
+}
+
+void tamaPressBtn(Tamagotchi *t, int btn) {
+	tamaToggleBtn(t, btn);
+	t->btnPressed=btn;
+	t->btnReleaseTm=9000000;
+}
+
 static char implemented[]={
 //	0 1 2 3 4 5 6 7 8 9 A B C D E F
-	1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0, //00
+	1,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0, //00
 	0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0, //10
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, //20
 	1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0, //30
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, //40
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, //50
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, //60
-	1,1,0,1,1,0,1,0,0,0,0,0,0,0,0,0, //70
+	1,1,0,1,1,0,1,1,0,0,0,0,0,0,0,0, //70
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, //80
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, //90
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, //A0
@@ -85,18 +106,24 @@ static char implemented[]={
 uint8_t ioRead(M6502 *cpu, register word addr) {
 	Tamagotchi *t=(Tamagotchi *)cpu->User;
 	TamaHw *hw=&t->hw;
-	if (addr==R_PBDATA) {
+	if (addr==R_PADATA) {
+		return hw->portAdata;
+	} else if (addr==R_PBDATA) {
 		return hw->portBdata;
+	} else if (addr==R_PCDATA) {
+		return hw->portCdata;
 	} else if (addr==R_INTCTLLO) {
 		return hw->iflags&0xff;
 	} else if (addr==R_INTCTLMI) {
 		return hw->iflags>>8;
 	} else if (addr==R_NMICTL) {
-		return hw->nmiflags;
+		return (t->ioreg[R_NMICTL]&0x80)|hw->nmiflags;
+	} else if (addr==R_LVCTL) {
+		return t->ioreg[R_LVCTL-0x3000]&0x83; //battery is always full
 	} else {
-		if (!implemented[addr&0xff]) {
-//			if (!cpu->Trace) printf("Unimplemented ioRd 0x%04X\n", addr);
-//			cpu->Trace=1;
+		if (!implemented[addr&0xff] && t->bkUnk) {
+			if (!cpu->Trace) printf("Unimplemented ioRd 0x%04X\n", addr);
+			cpu->Trace=1;
 		}
 		return t->ioreg[addr-0x3000];
 	}
@@ -136,10 +163,13 @@ void ioWrite(M6502 *cpu, register word addr, register byte val) {
 		t->lcd.sizex=(val+1)*8;
 	} else if (addr==R_LCDCOM) {
 		t->lcd.sizey=(val+1);
+	} else if (addr==R_NMICTL) {
+		t->ioreg[addr-0x3000]=val;
+		hw->nmiflags&=val;
 	} else {
-		if (!implemented[addr&0xff]) {
-//			printf("unimplemented ioWr 0x%04X 0x%02X\n", addr, val);
-//			cpu->Trace=1;
+		if (!implemented[addr&0xff] && t->bkUnk) {
+			printf("unimplemented ioWr 0x%04X 0x%02X\n", addr, val);
+			cpu->Trace=1;
 		}
 	}
 	t->ioreg[addr-0x3000]=val;
@@ -246,8 +276,16 @@ void tamaHwTick(Tamagotchi *t) {
 	if (REG(R_NMICTL)&0x80) {
 //		if (REG(R_NMICTL)&nmiTrigger)printf("Firing NMI; nmitrigger=0x%X\n", nmiTrigger);
 		//Should be edge triggred. The timer is. An implementation of lv may not be.
+		hw->nmiflags|=nmiTrigger;
 		if (REG(R_NMICTL)&nmiTrigger) Int6502(R, INT_NMI, 0);
-		hw->nmiflags=nmiTrigger;
+	}
+
+	if (t->btnReleaseTm!=0) {
+		t->btnReleaseTm--;
+		if (t->btnReleaseTm==0) {
+			tamaToggleBtn(t, t->btnPressed);
+			printf("Release btn %d\n", t->btnPressed);
+		}
 	}
 
 }
@@ -298,7 +336,9 @@ byte Loop6502(register M6502 *R) {
 
 Tamagotchi *tamaInit(unsigned char **rom) {
 	Tamagotchi *tama=malloc(sizeof(Tamagotchi));
+	memset(tama, 0, sizeof(Tamagotchi));
 	tama->cpu=malloc(sizeof(M6502));
+	memset(tama->cpu, 0, sizeof(M6502));
 	tama->rom=rom;
 	tama->cpu->Rd6502=tamaReadCb;
 	tama->cpu->Wr6502=tamaWriteCb;

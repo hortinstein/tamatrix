@@ -177,6 +177,8 @@ byte Debug6502(M6502 *R)
         printf("s <number> : Show sprite pattern\n");
 #endif /* INES */
 		printf("r          : Show hardware reg info\n");
+		printf("u          : Toggle break on unknown io r/w\n");
+		printf("p x        : Press button x\n");
         printf("?,h        : Show this help text\n");
         printf("q          : Exit emulation\n");
         break;
@@ -197,7 +199,13 @@ byte Debug6502(M6502 *R)
                  break;
       case 'C':  R->Trap=0xFFFF;R->Trace=0;return(1); 
       case 'Q':  return(0);
-
+      case 'U':
+		tamaToggleBkunk((Tamagotchi *)R->User);
+		break;
+	  case 'P':
+		tamaPressBtn((Tamagotchi*)R->User, atoi(S+1));
+		R->Trace=0;
+		return(1);
       case 'V':
         printf("\n6502 Interrupt Vectors:\n");
         printf("[$FFFC] INIT: $%04X\n",R->Rd6502(R, 0xFFFC)+256*R->Rd6502(R, 0xFFFD));

@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
 	rom=loadRoms();
 	tama=tamaInit(rom);
 	while(1) {
-		tamaRun(tama, 8000000L/50);
+		tamaRun(tama, 8000000L/10);
 		displayDram(tama->dram, tama->lcd.sizex, tama->lcd.sizey);
 	}
 }
