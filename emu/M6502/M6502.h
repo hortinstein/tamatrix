@@ -110,7 +110,7 @@ int Exec6502(register M6502 *R,register int RunCycles);
 /** INT_NMI will cause a non-maskable interrupt. INT_IRQ    **/
 /** will cause a normal interrupt, unless I_FLAG set in R.  **/
 /*************************************************************/
-void Int6502(register M6502 *R,register byte Type);
+void Int6502(register M6502 *R,register byte Type, word Vec);
 
 /** Run6502() ************************************************/
 /** This function will run 6502 code until Loop6502() call  **/

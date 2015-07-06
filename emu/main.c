@@ -34,6 +34,6 @@ int main(int argc, char **argv) {
 	tama=tamaInit(rom);
 	while(1) {
 		tamaRun(tama, 8000000L/50);
-		displayDram(tama->dram);
+//		displayDram(tama->dram);
 	}
 }

@@ -26,10 +26,10 @@
 #define R_PCDATA	0x3019
 #define R_TIMBASE	0x3030
 #define R_TIMCTL	0x3031
-#define R_TM0LOW	0x3032
-#define R_TM0HIGH	0x3033
-#define R_TM0LOW	0x3034
-#define R_TM0HIGH	0x3035
+#define R_TM0LO		0x3032
+#define R_TM0HI		0x3033
+#define R_TM1LO		0x3034
+#define R_TM1HI		0x3035
 #define R_CARCTL	0x303C
 #define R_KEYSCTL	0x303D
 #define R_KEYSP1	0x303E
@@ -87,17 +87,11 @@
 #define R_SPIPORT	0x30BA
 
 typedef struct {
-	uint8_t strobe;
-	uint8_t dir;
-	uint8_t config;
-	uint8_t data;
-} TamaGpio;
-
-typedef struct {
 	uint8_t bankSel;
-	uint8_t clkCtl;
-	TamaGpio gpioa;
-	TamaGpio gpiob;
+	uint8_t portAdata;
+	uint8_t portBdata;
+	uint8_t portCdata;
+	int32_t ticks;
 } TamaHw;
 
 

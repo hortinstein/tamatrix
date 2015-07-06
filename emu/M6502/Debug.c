@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include "../tamaemu.h"
 
 #ifdef INES
 #include "NES.h"
@@ -175,6 +176,7 @@ byte Debug6502(M6502 *R)
         printf("s          : Show sprite attributes\n");
         printf("s <number> : Show sprite pattern\n");
 #endif /* INES */
+		printf("r          : Show hardware reg info\n");
         printf("?,h        : Show this help text\n");
         printf("q          : Exit emulation\n");
         break;
@@ -237,69 +239,10 @@ byte Debug6502(M6502 *R)
         }
         break;
 
-#ifdef INES
-      case 'P':
-        printf("\nNo | Picture       | Sprites\n");
-        for(J=0;J<16;J++)
-        {
-          byte B1,B2;
-          B1=*(VRAM+0x3F00+J);B2=*(VRAM+0x3F10+J);
-          printf
-          (
-            "%2d | %02X (%02X,%02X,%02X) | %02X (%02X,%02X,%02X)\n",J,
-            B1,Palette[B1][0],Palette[B1][1],Palette[B1][2],
-            B2,Palette[B2][0],Palette[B2][1],Palette[B2][2]
-          );
-        }
-        break;
-
       case 'R':
-        printf
-        (
-          "\n[$2000] PPUCONT1 = $%02X\n[$2001] PPUCONT2 = $%02X\n[$2002] PPUSTAT  = $%02X\n",
-          PPU[0],PPU[1],PPU[2]
-        );
-        printf
-        (
-          "POSITION = %d,%d\nVADDR    = $%04X\nSCANLINE = %d\n",
-          SCROLLX,SCROLLY,VAddr,CURLINE
-        );
+        printf("Hw dump:\n");
+        tamaDumpHw(R);
         break;
-
-      case 'S':
-        if(sscanf(S+1,"%d",&J)==1)
-        {
-          K=SRAM[J*4+1];
-          P=SPRITES16?
-            VPage[(K&0x01? 4:0)+(K>>6)]+((K&0x3E)<<4)
-           :SprGen[K>>6]+((K&0x3F)<<4);
-          printf("Sprite #%d (pattern $%02X)\n--------\n",J,K);
-          for(I=SPRITES16? 16:8;I>0;I--,P++)
-          {
-            for(K=0x80;K;K>>=1)
-              printf("%c",P[0]&K? (P[8]&K? '#':'o'):(P[8]&K? 'O':'.'));
-            printf("\n");
-            if(I==9) P+=8;
-          }
-          printf("--------\n");
-        }
-        else
-        {
-          printf("\nNo| Position | Pat | Att |No| Position | Pat | Att |No| Position | Pat | Att\n");
-          for(J=I=0;J<64*4;J+=4)
-            if(!J||(SRAM[J]&&SRAM[J+3]&&(SRAM[J]<240)))
-            {
-              printf
-              (
-                "%2d| %3d,%3d  | $%02X | $%02X %s",
-                J/4,SRAM[J+3],SRAM[J],SRAM[J+1],SRAM[J+2],
-                I%3==2? "\n":"|"
-              );
-              I++;
-            }
-        }
-        break;
-#endif /* INES */
     }
   }
 

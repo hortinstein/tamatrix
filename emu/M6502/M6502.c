@@ -242,7 +242,7 @@ int Exec6502(M6502 *R,int RunCycles)
 /** INT_NMI will cause a non-maskable interrupt. INT_IRQ    **/
 /** will cause a normal interrupt, unless I_FLAG set in R.  **/
 /*************************************************************/
-void Int6502(M6502 *R,byte Type)
+void Int6502(M6502 *R,byte Type, word Vec)
 {
   register pair J;
 
@@ -255,6 +255,7 @@ void Int6502(M6502 *R,byte Type)
     R->P&=~D_FLAG;
     if(R->IAutoReset&&(Type==R->IRequest)) R->IRequest=INT_NONE;
     if(Type==INT_NMI) J.W=0xFFFA; else { R->P|=I_FLAG;J.W=0xFFFE; }
+	if (Vec!=0) J.W=Vec;
     R->PC.B.l=R->Rd6502(R, J.W++);
     R->PC.B.h=R->Rd6502(R, J.W);
   }
