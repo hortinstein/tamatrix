@@ -3,15 +3,17 @@
 #include <signal.h>
 #include <stdlib.h>
 
-void displayDram(uint8_t *ram) {
+//tama lcd is 48x32
+void displayDram(uint8_t *ram, int sx, int sy) {
 	int x, y;
-	int b;
-	char grays[]=" .*M";
+	int b, p;
+	char grays[]=" '*M";
 	printf("\033[1;1H");
-	for (y=0; y<32; y++) {
-		for (x=0; x<64; x++) {
-			b=ram[x+(y/4)*32];
-			b=(b>>((y&3)*2))&3;
+	for (y=0; y<sy; y++) {
+		for (x=0; x<sx; x++) {
+			p=x+(sy-y-1)*sx;
+			b=ram[p/4];
+			b=(b>>((3-(p&3))*2))&3;
 			putchar(grays[b]);
 			putchar(grays[b]);
 		}
@@ -34,6 +36,6 @@ int main(int argc, char **argv) {
 	tama=tamaInit(rom);
 	while(1) {
 		tamaRun(tama, 8000000L/50);
-//		displayDram(tama->dram);
+		displayDram(tama->dram, tama->lcd.sizex, tama->lcd.sizey);
 	}
 }

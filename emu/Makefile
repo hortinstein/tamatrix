@@ -1,5 +1,5 @@
 LDFLAGS := 
-CFLAGS := -ggdb -Wall
+CFLAGS := -ggdb -Wall -O2
 OBJS := main.o tamaemu.o
 
 all: tamaemu

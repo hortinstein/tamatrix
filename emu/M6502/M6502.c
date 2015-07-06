@@ -254,8 +254,7 @@ void Int6502(M6502 *R,byte Type, word Vec)
     M_PUSH(R->P&~B_FLAG);
     R->P&=~D_FLAG;
     if(R->IAutoReset&&(Type==R->IRequest)) R->IRequest=INT_NONE;
-    if(Type==INT_NMI) J.W=0xFFFA; else { R->P|=I_FLAG;J.W=0xFFFE; }
-	if (Vec!=0) J.W=Vec;
+    if(Type==INT_NMI) J.W=Vec?Vec:0xFFFA; else { R->P|=I_FLAG;J.W=Vec?Vec:0xFFFE; }
     R->PC.B.l=R->Rd6502(R, J.W++);
     R->PC.B.h=R->Rd6502(R, J.W);
   }

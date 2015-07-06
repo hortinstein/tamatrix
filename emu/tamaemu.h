@@ -86,14 +86,32 @@
 #define R_SPIMISC	0x30B7
 #define R_SPIPORT	0x30BA
 
+#define IRQVECT_T0			0xFFC0
+#define IRQVECT_FROSCD2K	0xFFC6
+#define IRQVECT_FROSCD8K	0xFFC8
+#define IRQVECT_SPU			0xFFCA
+#define IRQVECT_SPI			0xFFCC
+#define IRQVECT_FP			0xFFCE
+#define IRQVECT_T1			0xFFD4
+#define IRQVECT_TBH			0xFFD8
+#define IRQVECT_TBL			0xFFDA
+#define IRQVECT_NMI			0xFFFA
+
 typedef struct {
 	uint8_t bankSel;
 	uint8_t portAdata;
 	uint8_t portBdata;
 	uint8_t portCdata;
 	int32_t ticks;
+	int16_t iflags;
+	int8_t nmiflags;
 } TamaHw;
 
+
+typedef struct {
+	int sizex;
+	int sizey;
+} TamaLcd;
 
 typedef struct {
 	M6502 *cpu;
@@ -102,6 +120,7 @@ typedef struct {
 	char dram[512];
 	char ioreg[255];
 	TamaHw hw;
+	TamaLcd lcd;
 } Tamagotchi;
 
 
