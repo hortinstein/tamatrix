@@ -1,6 +1,8 @@
 #ifndef TAMAEMU_H
 #define TAMAEMU_H
 
+#define FCPU 16000000
+
 #include <stdint.h>
 #include "M6502/M6502.h"
 
@@ -111,6 +113,15 @@
 #define IRQVECT_NMI			0xFFFA
 
 typedef struct {
+	int tblDiv, tblCtr;
+	int tbhDiv, tbhCtr;
+	int c8kCtr, c2kCtr;
+	int t0Div, t0Ctr;
+	int t1Div, t1Ctr;
+	int cpuDiv, cpuCtr;
+} TamaClk;
+
+typedef struct {
 	uint8_t bankSel;
 	uint8_t portAdata;
 	uint8_t portBdata;
@@ -118,6 +129,7 @@ typedef struct {
 	int32_t ticks;
 	int16_t iflags;
 	int8_t nmiflags;
+	int remCpuCycles;
 } TamaHw;
 
 
@@ -134,6 +146,7 @@ typedef struct {
 	char ioreg[255];
 	TamaHw hw;
 	TamaLcd lcd;
+	TamaClk clk;
 	int bkUnk;
 	int btnPressed;
 	int btnReleaseTm;

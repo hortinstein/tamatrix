@@ -11,7 +11,11 @@ void displayDram(uint8_t *ram, int sx, int sy) {
 	printf("\033[1;1H");
 	for (y=0; y<sy; y++) {
 		for (x=0; x<sx; x++) {
-			p=x+(sy-y-1)*sx;
+			if (y>=16) {
+				p=x+(sy-y-1)*sx;
+			} else {
+				p=x+(sy-(15-y)-1)*sx;
+			}
 			b=ram[p/4];
 			b=(b>>((3-(p&3))*2))&3;
 			putchar(grays[b]);
@@ -35,7 +39,7 @@ int main(int argc, char **argv) {
 	rom=loadRoms();
 	tama=tamaInit(rom);
 	while(1) {
-		tamaRun(tama, 8000000L/10);
+		tamaRun(tama, FCPU/20);
 		displayDram(tama->dram, tama->lcd.sizex, tama->lcd.sizey);
 	}
 }

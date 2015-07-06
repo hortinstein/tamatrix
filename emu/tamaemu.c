@@ -9,11 +9,18 @@ int PAGECT=20;
 
 
 void tamaDumpHw(M6502 *cpu) {
-	char *intfdesc[]={"FP", "SPI", "SPU", "FOSC/8K", "FOSC/2K", "x", "x", "TM0", 
+	const char *intfdesc[]={"FP", "SPI", "SPU", "FOSC/8K", "FOSC/2K", "x", "x", "TM0", 
 			"EX", "x", "TBL", "TBH", "x", "TM1", "x", "x"};
-	char *nmidesc[]={"LV", "TM1", "x", "x", "x", "x", "x", "NMIEN"};
+	const char *nmidesc[]={"LV", "TM1", "x", "x", "x", "x", "x", "NMIEN"};
+	const char *tbldiv[]={"2HZ", "8HZ", "4HZ", "16HZ"};
+	const char *tbhdiv[]={"128HZ", "512HZ", "256HZ", "1KHZ"};
+	const char *t0diva[]={"VSS", "Rosc", "32KHz", "ECLK", "VDD", "x", "x", "x"};
+	const char *t0divb[]={"VDD", "TBL", "TBH", "EXTI", "2HZ", "8HZ", "32HZ", "64HZ"};
+	const char *t1div[]={"VSS", "Rosc", "32KHz", "TIMER0"};
+	const char *ccdiv[]={"/2", "/4", "/8", "/16", "/32", "/64", "/128", "OFF"};
 	Tamagotchi *t=(Tamagotchi *)cpu->User;
 	TamaHw *hw=&t->hw;
+	TamaClk *clk=&t->clk;
 	int i;
 	int ien=t->ioreg[0x70]+(t->ioreg[0x71]<<8);
 	printf("Ints enabled: (0x%X)", ien);
@@ -28,6 +35,15 @@ void tamaDumpHw(M6502 *cpu) {
 	for (i=0; i<8; i++) {
 		if (REG(R_NMICTL)&(1<<i)) printf("%s ", nmidesc[i]);
 	}
+
+	printf("Timebase: tbl: %s, ", tbldiv[((REG(R_TIMBASE)>>2)&3)]);
+	printf("tbh %s, ", tbhdiv[((REG(R_TIMBASE)>>0)&3)]);
+	printf("t0A %s, ", t0diva[((REG(R_TIMCTL)>>5)&7)]);
+	printf("t0B %s, ", t0divb[((REG(R_TIMCTL)>>2)&7)]);
+	printf("T1 %s, ", t1div[((REG(R_TIMCTL)>>0)&3)]);
+	printf("CPU %s\n", ccdiv[REG(R_CLKCTL)&7]);
+	printf("Prescalers: tbl: %d/%d, tbh: %d/%d, c8k: %d, c2k %d, t0: %d/%d, t1: %d/%d, cpu: %d/%d\n",
+		clk->tblCtr, clk->tblDiv, clk->tbhCtr, clk->tbhDiv, clk->c8kCtr, clk->c2kCtr, clk->t0Ctr, clk->t0Div, clk->t1Ctr, clk->t1Div, clk->cpuCtr, clk->cpuDiv);
 	printf("\n");
 }
 
@@ -62,8 +78,45 @@ void freeRoms(unsigned char **roms) {
 	free(roms);
 }
 
+void tamaClkRecalc(Tamagotchi *t) {
+//	TamaHw *hw=&t->hw;
+	TamaClk *clk=&t->clk;
+	const int tbldiv[]={FCPU/2, FCPU/8, FCPU/4, FCPU/16};
+	const int tbhdiv[]={FCPU/128, FCPU/512, FCPU/256, FCPU/1000};
+	const int t0diva[]={0, 1, FCPU/32767, 1, 0, 0, 0, 0};
+	const int t0divb[]={0, 0, 0, 0, FCPU/2, FCPU/8, FCPU/32, FCPU/64};
+	const int t1div[]={0, 1, FCPU/32768, 0};
+	const int ccdiv[]={2, 4, 8, 16, 32, 64, 128, 0};
+
+	clk->tblDiv=tbldiv[((REG(R_TIMBASE)>>2)&3)];
+	clk->tbhDiv=tbhdiv[((REG(R_TIMBASE)>>0)&3)];
+	clk->t0Div=t0diva[((REG(R_TIMCTL)>>5)&7)];
+	if (clk->t0Div==0) {
+		clk->t0Div=t0divb[((REG(R_TIMCTL)>>2)&7)];
+	}
+	clk->t1Div=t1div[((REG(R_TIMCTL)>>0)&3)];
+	clk->cpuDiv=ccdiv[REG(R_CLKCTL)&7];
+}
+
+
 void tamaToggleBkunk(Tamagotchi *t) {
 	t->bkUnk=!t->bkUnk;
+}
+
+//feed R_WAKEFL value
+void tamaWakeSrc(Tamagotchi *t, int src) {
+	TamaHw *hw=&t->hw;
+	TamaClk *clk=&t->clk;
+//	REG(R_WAKEFL)|=src; //...maybe?
+	if (((REG(R_CLKCTL)&7)==7) && ((REG(R_WAKEEN))&src)!=0) {
+		REG(R_WAKEFL)|=src;
+		REG(R_CLKCTL)|=2;
+		clk->cpuDiv=8;
+		if (src==1) {
+			printf("Btn wake!\n");
+//			t->cpu->Trace=1;
+		}
+	}
 }
 
 void tamaToggleBtn(Tamagotchi *t, int btn) {
@@ -75,12 +128,13 @@ void tamaToggleBtn(Tamagotchi *t, int btn) {
 	} else {
 		hw->portCdata^=(1<<(btn-16));
 	}
+	tamaWakeSrc(t, (1<<0));
 }
 
 void tamaPressBtn(Tamagotchi *t, int btn) {
 	tamaToggleBtn(t, btn);
 	t->btnPressed=btn;
-	t->btnReleaseTm=9000000;
+	t->btnReleaseTm=FCPU/1;
 }
 
 static char implemented[]={
@@ -107,6 +161,7 @@ uint8_t ioRead(M6502 *cpu, register word addr) {
 	Tamagotchi *t=(Tamagotchi *)cpu->User;
 	TamaHw *hw=&t->hw;
 	if (addr==R_PADATA) {
+		printf("PA: %X\n", hw->portAdata);
 		return hw->portAdata;
 	} else if (addr==R_PBDATA) {
 		return hw->portBdata;
@@ -117,7 +172,7 @@ uint8_t ioRead(M6502 *cpu, register word addr) {
 	} else if (addr==R_INTCTLMI) {
 		return hw->iflags>>8;
 	} else if (addr==R_NMICTL) {
-		return (t->ioreg[R_NMICTL]&0x80)|hw->nmiflags;
+		return (t->ioreg[R_NMICTL-0x3000]&0x80)|hw->nmiflags;
 	} else if (addr==R_LVCTL) {
 		return t->ioreg[R_LVCTL-0x3000]&0x83; //battery is always full
 	} else {
@@ -166,6 +221,18 @@ void ioWrite(M6502 *cpu, register word addr, register byte val) {
 	} else if (addr==R_NMICTL) {
 		t->ioreg[addr-0x3000]=val;
 		hw->nmiflags&=val;
+	} else if (addr==R_TIMBASE || addr==R_TIMCTL || addr==R_CLKCTL) {
+		t->ioreg[addr-0x3000]=val;
+		tamaClkRecalc(t);
+	} else if (addr==R_WAKEFL) {
+		//Make sure the write _clears_ the flag
+		val=t->ioreg[R_WAKEFL-0x3000]&(~(val));
+	} else if (addr>=0x3080 && addr<0x3090) {
+		printf("Data\n");
+		t->cpu->Trace=1;
+//	} else if (addr==0x3007) {
+//		cpu->Trace=1;
+//		printf("wuctl unimplemented ioWr 0x%04X 0x%02X\n", addr, val);
 	} else {
 		if (!implemented[addr&0xff] && t->bkUnk) {
 			printf("unimplemented ioWr 0x%04X 0x%02X\n", addr, val);
@@ -176,88 +243,79 @@ void ioWrite(M6502 *cpu, register word addr, register byte val) {
 }
 
 
-#define CLK2HZ 0
-#define CLK4HZ 1
-#define CLK8HZ 2
-#define CLK16HZ 3
-#define CLK32HZ 4
-#define CLK64HZ 5
-#define CLK128HZ 6
-#define CLK512HZ 7
-#define CLK256HZ 8
-#define CLK1KHZ 9
-#define CLK32KHZ 10
-#define CLKROSC 11
-#define CLKTBL 12
-#define CLKTBH 13
-#define CLKT0 14
-#define CLKVSS 15
-#define CLKVDD 16
-#define CLKEXTI 17
-#define CLKD2K 18
-#define CLKD8K 19
-#define CLKCNT 20
-
-
 void tamaHwTick(Tamagotchi *t) {
-	//Okay, we're kinda assuming this is called at 8MHz. We'll scale the rest accordingly.
 	TamaHw *hw=&t->hw;
+	TamaClk *clk=&t->clk;
 	M6502 *R=t->cpu;
-	int clock[CLKCNT];
-	const int ticks[CLKCNT]={8000000/2, 8000000/4, 8000000/8, 8000000/16, 8000000/32, 8000000/64, 
-				8000000/128, 8000000/512, 8000000/256, 8000000/1000, 8000000/32768, 
-				8000000/128 /*TBD*/, 1, 1, 1, 1, 1, 1, 2048, 8192}; 
-	const int tblClocks[]={CLK2HZ, CLK8HZ, CLK4HZ, CLK16HZ};
-	const int tbhClocks[]={CLK128HZ, CLK512HZ, CLK256HZ, CLK1KHZ};
-	const int tm0ClocksA[]={CLKVSS, CLKROSC, CLK32KHZ, CLKEXTI /*actually ECLK*/, CLKVDD};
-	const int tm0ClocksB[]={CLKVDD, CLKTBL, CLKTBH, CLKEXTI, CLK2HZ, CLK8HZ, CLK32HZ, CLK64HZ};
-	const int tm1Clocks[]={CLKVSS, CLKROSC, CLK32KHZ, CLKT0};
-	int x;
-	int ien=0;
-	int tm0tick=0, tm1tick=0;
-	int t0ovf=0, t1ovf=0;
+	int t0Tick=0, t1Tick=0;
 	int nmiTrigger=0;
-	hw->ticks++; //next tick
-	//Generate clock pulses for other counters
-	for (x=0; x<CLKCNT; x++) clock[x]=(((hw->ticks%ticks[x])==0)?1:0);
-	clock[CLKVSS]=0; clock[CLKVDD]=0;
+	int ien;
 
-	//Select correct tbl/tbh timebases
-	clock[CLKTBL]=clock[tblClocks[((REG(R_TIMBASE)&0xC)>>2)]];
-	clock[CLKTBH]=clock[tbhClocks[((REG(R_TIMBASE)&0x3))]];
+	clk->tblCtr++;
+	clk->tbhCtr++;
+	clk->c8kCtr++;
+	clk->c2kCtr++;
+	if (clk->cpuDiv!=0) clk->cpuCtr++;
+	if (clk->t0Div!=0) clk->t0Ctr++;
+	if (clk->t1Div!=0) clk->t1Ctr++;
+	if (clk->tblCtr>=clk->tblDiv) {
+		clk->tblCtr=0;
+		hw->iflags|=(1<<10);
+		if (((REG(R_TIMCTL)>>2)&7)==1) t0Tick=1;
+		tamaWakeSrc(t, (1<<1));
+	}
+	if (clk->tbhCtr>=clk->tbhDiv) {
+		clk->tbhCtr=0;
+		hw->iflags|=(1<<11);
+		if (((REG(R_TIMCTL)>>2)&7)==2) t0Tick=1;
+		tamaWakeSrc(t, (1<<3));
+	}
+	if (clk->c2kCtr>=2048) {
+		clk->c2kCtr=0;
+		hw->iflags|=(1<<4);
+	}
+	if (clk->c8kCtr>=8192) {
+		clk->c8kCtr=0;
+		hw->iflags|=(1<<3);
+	}
+	if (clk->cpuDiv!=0 && clk->cpuCtr>=clk->cpuDiv) {
+		clk->cpuCtr=0;
+		hw->remCpuCycles++;
+	}
+	if (clk->t0Div!=0 && clk->t0Ctr>=clk->t0Div) {
+		clk->t0Ctr=0;
+		t0Tick=1;
+	}
 
-	//We don't do the AND of timer0 yet... 
-	tm0tick=clock[tm0ClocksB[(REG(R_TIMCTL)>>2)&7]];
-	if (tm0tick) {
+	if (t0Tick) {
 		REG(R_TM0LO)++;
 		if (REG(R_TM0LO)==0) {
 			REG(R_TM0HI)++;
 			if (REG(R_TM0HI)==0) {
-				t0ovf=1;
+				hw->iflags|=(1<<7);
+				if (((REG(R_TIMCTL))&3)==3) t1Tick=1;
+				tamaWakeSrc(t, (1<<2));
 			}
 		}
 	}
-	clock[CLKT0]=t0ovf;
 
-	tm1tick=clock[tm1Clocks[(REG(R_TIMCTL)&3)]];
-	if (tm1tick) {
+	if (clk->t1Div!=0 && clk->t1Ctr>=clk->t1Div) {
+		clk->t1Ctr=0;
+		t1Tick=1;
+	}
+
+	if (t1Tick) {
 		REG(R_TM1LO)++;
 		if (REG(R_TM1LO)==0) {
 			REG(R_TM1HI)++;
 			if (REG(R_TM1HI)==0) {
-				t1ovf=1;
+				hw->iflags|=(1<<13);
+				nmiTrigger|=(1<<1);
+				tamaWakeSrc(t, (1<<4));
 			}
 		}
 	}
-	
-	//Handle clock interrupts
-	if (t1ovf) hw->iflags|=(1<<13);
-	if (t1ovf) nmiTrigger|=(1<<1);
-	if (clock[CLKTBH]) hw->iflags|=(1<<11);
-	if (clock[CLKTBL]) hw->iflags|=(1<<10);
-	if (t0ovf) hw->iflags|=(1<<7);
-	if (clock[CLKD2K]) hw->iflags|=(1<<4);
-	if (clock[CLKD8K]) hw->iflags|=(1<<3);
+
 
 	//Fire interrupts if enabled
 	ien=REG(R_INTCTLLO)+(REG(R_INTCTLMI)<<8);
@@ -271,28 +329,34 @@ void tamaHwTick(Tamagotchi *t) {
 	if ((ien&hw->iflags)&(1<<10)) Int6502(R, INT_IRQ, IRQVECT_TBL);
 	if ((ien&hw->iflags)&(1<<11)) Int6502(R, INT_IRQ, IRQVECT_TBH);
 	if ((ien&hw->iflags)&(1<<13)) Int6502(R, INT_IRQ, IRQVECT_T1);
-
 	//Fire NMI
 	if (REG(R_NMICTL)&0x80) {
-//		if (REG(R_NMICTL)&nmiTrigger)printf("Firing NMI; nmitrigger=0x%X\n", nmiTrigger);
 		//Should be edge triggred. The timer is. An implementation of lv may not be.
 		hw->nmiflags|=nmiTrigger;
-		if (REG(R_NMICTL)&nmiTrigger) Int6502(R, INT_NMI, 0);
+		if (REG(R_NMICTL)&nmiTrigger) {
+			Int6502(R, INT_NMI, 0);
+		}
 	}
 
+	//Handle stupid hackish button release...
 	if (t->btnReleaseTm!=0) {
 		t->btnReleaseTm--;
 		if (t->btnReleaseTm==0) {
 			tamaToggleBtn(t, t->btnPressed);
+			tamaWakeSrc(t, (1<<0));
 			printf("Release btn %d\n", t->btnPressed);
 		}
 	}
 
+	//Now would be a good time to run the cpu, if needed.
+	if (hw->remCpuCycles>0) {
+		hw->remCpuCycles=Exec6502(t->cpu, hw->remCpuCycles);
+	}
 }
 
 uint8_t tamaReadCb(M6502 *cpu, register word addr) {
 	Tamagotchi *t=(Tamagotchi *)cpu->User;
-	uint8_t r;
+	uint8_t r=0xff;
 	if (addr<0x600) {
 		r=t->ram[addr];
 	} else if (addr>=0x1000 &&  addr<0x1200) {
@@ -344,26 +408,18 @@ Tamagotchi *tamaInit(unsigned char **rom) {
 	tama->cpu->Wr6502=tamaWriteCb;
 	tama->cpu->User=(void*)tama;
 	tama->hw.bankSel=0;
-	tama->hw.portAdata=0xff;
+	tama->hw.portAdata=0xf; //4-batlo 3-but2 2-but1 1-but0
 	tama->hw.portBdata=0xfe;
 	tama->hw.portCdata=0xff;
 	Reset6502(tama->cpu);
+	tama->ioreg[R_CLKCTL-0x3000]=0x2; //Fosc/8 is default
+	tamaClkRecalc(tama);
 	return tama;
 }
 
-
-
 void tamaRun(Tamagotchi *tama, int cycles) {
-	int n;
 	int i;
-	while (cycles>0) {
-		n=Exec6502(tama->cpu, 1);
-		n=(1-n); //n = cycles ran
-		for (i=0; i<n; i++) {
-			tamaHwTick(tama);
-		}
-		cycles-=n;
-	}
+	for (i=0; i<cycles; i++) tamaHwTick(tama);
 }
 
 
