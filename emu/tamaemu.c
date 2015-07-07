@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "tamaemu.h"
+#include "i2c.h"
 
 int PAGECT=20;
 
@@ -198,6 +199,13 @@ void ioWrite(M6502 *cpu, register word addr, register byte val) {
 //			printf("Bank switch %d\n", val);
 			hw->bankSel=val;
 		}
+	} else if (addr==R_PADATA) {
+		printf("PortA: %x\n", val);
+	} else if (addr==R_PBDATA) {
+		printf("PortB: %x\n", val);
+		i2cHandle(t->i2cbus, val&2, val&1);
+	} else if (addr==R_PCDATA) {
+		printf("PortC: %x\n", val);
 	} else if (addr==R_INTCLRLO) {
 		int msk=0xffff^(val);
 		hw->iflags&=msk;
@@ -408,6 +416,7 @@ Tamagotchi *tamaInit(unsigned char **rom) {
 	tama->cpu=malloc(sizeof(M6502));
 	memset(tama->cpu, 0, sizeof(M6502));
 	tama->rom=rom;
+	tama->i2cbus=i2cInit();
 	tama->cpu->Rd6502=tamaReadCb;
 	tama->cpu->Wr6502=tamaWriteCb;
 	tama->cpu->User=(void*)tama;

@@ -5,6 +5,7 @@
 
 #include <stdint.h>
 #include "M6502/M6502.h"
+#include "i2c.h"
 
 #define R_BANK		0x3000
 #define R_CLKCTL	0x3001
@@ -141,6 +142,7 @@ typedef struct {
 typedef struct {
 	M6502 *cpu;
 	unsigned char **rom;
+	I2cBus *i2cbus;
 	char ram[1536];
 	char dram[512];
 	char ioreg[255];

@@ -40,6 +40,6 @@ int main(int argc, char **argv) {
 	tama=tamaInit(rom);
 	while(1) {
 		tamaRun(tama, FCPU/20);
-		displayDram(tama->dram, tama->lcd.sizex, tama->lcd.sizey);
+//		displayDram(tama->dram, tama->lcd.sizex, tama->lcd.sizey);
 	}
 }
