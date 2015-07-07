@@ -203,7 +203,8 @@ void ioWrite(M6502 *cpu, register word addr, register byte val) {
 		printf("PortA: %x\n", val);
 	} else if (addr==R_PBDATA) {
 		printf("PortB: %x\n", val);
-		i2cHandle(t->i2cbus, val&2, val&1);
+		hw->portBdata&=~1;
+		if (i2cHandle(t->i2cbus, val&2, val&1) && (val&1)) hw->portBdata|=1;
 	} else if (addr==R_PCDATA) {
 		printf("PortC: %x\n", val);
 	} else if (addr==R_INTCLRLO) {
@@ -417,6 +418,8 @@ Tamagotchi *tamaInit(unsigned char **rom) {
 	memset(tama->cpu, 0, sizeof(M6502));
 	tama->rom=rom;
 	tama->i2cbus=i2cInit();
+	tama->i2ceeprom=i2ceepromInit("tama.eep");
+	i2cAddDev(tama->i2cbus, &tama->i2ceeprom->i2cdev, 0xA0);
 	tama->cpu->Rd6502=tamaReadCb;
 	tama->cpu->Wr6502=tamaWriteCb;
 	tama->cpu->User=(void*)tama;

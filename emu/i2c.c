@@ -21,26 +21,33 @@ void i2cFree(I2cBus *b) {
 }
 
 int i2cHandle(I2cBus *b, int scl, int sda) {
-	int ret=sda;
+	int ret=b->oldOut;
+//	printf("I2c state: %d\n", b->state);
 	if (b->oldScl && scl && !b->oldSda && sda) {
 		//Stop condition.
 		b->state=I2C_IDLE;
+		ret=1;
 	} else if (b->oldScl && scl && b->oldSda && !sda) {
 		//Start condition
 		b->state=I2C_B0;
 		b->byteCnt=0;
 		b->dirOut=0;
-		printf("I2C: start\n");
+//		printf("I2C: start\n");
+		ret=1;
 	} else if (!b->oldScl && scl && b->oldSda == sda && b->state!=I2C_IDLE) {
 		//Clock bit
 		if (b->dirOut) {
 			if (b->state!=I2C_ACK) {
 				if (b->state==I2C_B0) {
-					//ToDo: grab byte from dev
-					b->byte=0xff;
+					if (b->dev[b->adr/2]) {
+						b->byte=b->dev[b->adr/2]->readCb(b->dev[b->adr/2]->dev,b->byteCnt);
+					} else {
+						//No such dev
+						b->byte=0xff;
+					}
 				}
-				if (!(b->byte&1)) ret=0;
-				b->byte>>=1;
+				if (!(b->byte&0x80)) ret=0;
+				b->byte<<=1;
 				b->state++;
 			} else {
 				//ToDo: read ack, send to dev
@@ -49,24 +56,35 @@ int i2cHandle(I2cBus *b, int scl, int sda) {
 			}
 		} else {
 			if (b->state!=I2C_ACK) {
-				b->byte>>=1; if (sda) b->byte|=0x80;
+				b->byte<<=1; if (sda) b->byte|=0x1;
 				b->state++;
 			} else {
 				//Byte is in.
+//				printf("I2C: got byte %d val 0x%02X\n", b->byteCnt, b->byte);
 				if (b->byteCnt==0) {
+					//Address byte
 					b->adr=b->byte;
-					if (!(b->adr&0x80)) b->dirOut=1;
+					if ((b->adr&1)) b->dirOut=1;
+					if (b->dev[b->adr/2]) ret=0; //Ack if dev is available.
+				} else {
+					//Send byte to dev, grab ack and send to host
+					if (b->dev[b->adr/2]) {
+						ret=(b->dev[b->adr/2]->writeCb(b->dev[b->adr/2]->dev, b->byteCnt, b->byte))?0:1;
+					} else {
+						ret=1;
+					}
 				}
-				printf("I2C: got byte %d val 0x%02X\n", b->byteCnt, b->byte);
-				//Send byte to dev, grab ack and send to host
-				ret=0; //HACK: always ack.
 				b->byteCnt++;
 				b->state=I2C_B0;
 			}
 		}
-		b->state++;
 	}
 	b->oldScl=scl;
 	b->oldSda=sda;
+	b->oldOut=ret;
 	return ret;
+}
+
+void i2cAddDev(I2cBus *b, I2cDev *dev, int addr) {
+	b->dev[addr/2]=dev;
 }
