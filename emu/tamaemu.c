@@ -35,7 +35,7 @@ void tamaDumpHw(M6502 *cpu) {
 	for (i=0; i<8; i++) {
 		if (REG(R_NMICTL)&(1<<i)) printf("%s ", nmidesc[i]);
 	}
-
+	printf("\n");
 	printf("Timebase: tbl: %s, ", tbldiv[((REG(R_TIMBASE)>>2)&3)]);
 	printf("tbh %s, ", tbhdiv[((REG(R_TIMBASE)>>0)&3)]);
 	printf("t0A %s, ", t0diva[((REG(R_TIMCTL)>>5)&7)]);
@@ -44,7 +44,7 @@ void tamaDumpHw(M6502 *cpu) {
 	printf("CPU %s\n", ccdiv[REG(R_CLKCTL)&7]);
 	printf("Prescalers: tbl: %d/%d, tbh: %d/%d, c8k: %d, c2k %d, t0: %d/%d, t1: %d/%d, cpu: %d/%d\n",
 		clk->tblCtr, clk->tblDiv, clk->tbhCtr, clk->tbhDiv, clk->c8kCtr, clk->c2kCtr, clk->t0Ctr, clk->t0Div, clk->t1Ctr, clk->t1Div, clk->cpuCtr, clk->cpuDiv);
-	printf("\n");
+	printf("Btn port reads since last press: %d\n", t->btnReads);
 }
 
 unsigned char **loadRoms() {
@@ -132,9 +132,11 @@ void tamaToggleBtn(Tamagotchi *t, int btn) {
 }
 
 void tamaPressBtn(Tamagotchi *t, int btn) {
+	if (t->btnReleaseTm!=0) return;
 	tamaToggleBtn(t, btn);
 	t->btnPressed=btn;
-	t->btnReleaseTm=FCPU/1;
+	t->btnReleaseTm=FCPU/3;
+	t->btnReads=0;
 }
 
 static char implemented[]={
@@ -161,7 +163,9 @@ uint8_t ioRead(M6502 *cpu, register word addr) {
 	Tamagotchi *t=(Tamagotchi *)cpu->User;
 	TamaHw *hw=&t->hw;
 	if (addr==R_PADATA) {
-		printf("PA: %X\n", hw->portAdata);
+//		printf("PA: %X\n", hw->portAdata);
+//		cpu->Trace=1;
+		t->btnReads++;
 		return hw->portAdata;
 	} else if (addr==R_PBDATA) {
 		return hw->portBdata;
@@ -339,7 +343,7 @@ void tamaHwTick(Tamagotchi *t) {
 	}
 
 	//Handle stupid hackish button release...
-	if (t->btnReleaseTm!=0) {
+	if (t->btnReleaseTm!=0 && t->btnReads>5) {
 		t->btnReleaseTm--;
 		if (t->btnReleaseTm==0) {
 			tamaToggleBtn(t, t->btnPressed);

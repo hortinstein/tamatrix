@@ -150,6 +150,7 @@ typedef struct {
 	int bkUnk;
 	int btnPressed;
 	int btnReleaseTm;
+	int btnReads;
 } Tamagotchi;
 
 
