@@ -27,6 +27,7 @@ int i2cHandle(I2cBus *b, int scl, int sda) {
 		//Stop condition.
 		b->state=I2C_IDLE;
 		ret=1;
+//		printf("I2C: stop\n");
 	} else if (b->oldScl && scl && b->oldSda && !sda) {
 		//Start condition
 		b->state=I2C_B0;
@@ -35,10 +36,12 @@ int i2cHandle(I2cBus *b, int scl, int sda) {
 //		printf("I2C: start\n");
 		ret=1;
 	} else if (!b->oldScl && scl && b->oldSda == sda && b->state!=I2C_IDLE) {
-		//Clock bit
+		ret=1;
+		//Clock up: bit is clocked in or out.
 		if (b->dirOut) {
 			if (b->state!=I2C_ACK) {
 				if (b->state==I2C_B0) {
+					//Fetch new byte from dev
 					if (b->dev[b->adr/2]) {
 						b->byte=b->dev[b->adr/2]->readCb(b->dev[b->adr/2]->dev,b->byteCnt);
 					} else {
@@ -56,6 +59,7 @@ int i2cHandle(I2cBus *b, int scl, int sda) {
 			}
 		} else {
 			if (b->state!=I2C_ACK) {
+				//Receiving bit of byte
 				b->byte<<=1; if (sda) b->byte|=0x1;
 				b->state++;
 			} else {
@@ -65,7 +69,7 @@ int i2cHandle(I2cBus *b, int scl, int sda) {
 					//Address byte
 					b->adr=b->byte;
 					if ((b->adr&1)) b->dirOut=1;
-					if (b->dev[b->adr/2]) ret=0; //Ack if dev is available.
+					if (b->dev[b->adr/2]) ret=0; else ret=1; //Ack if dev is available.
 				} else {
 					//Send byte to dev, grab ack and send to host
 					if (b->dev[b->adr/2]) {

@@ -7,28 +7,38 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+//Q&D code to emulate a 64K (or less) EEPROM
+
 
 int i2ceepromWrite(void *dev, int byteNo, uint8_t byte) {
 	I2cEeprom *e=(I2cEeprom *)dev;
 	if (byteNo==1) {
-		e->adr=byte;
+		e->adr=byte<<8;
+	} else if (byteNo==2) {
+		e->adr|=byte;
 	} else {
-		e->mem[e->adr++]=byte;
-		e->adr&=0xff;
+		int page=e->adr&0xFFE0;
+		printf("I2CEEprom write: (%d) addr %02X val %02X\n", byteNo-2, e->adr, byte);
+		e->mem[e->adr]=byte;
+		e->adr++;
+		//Simulate in-page rollover
+		e->adr=page|(e->adr&0x1F);
 	}
 	return 1;
 }
 
 int i2ceepromRead(void *dev, int byteNo) {
-	I2cEeprom *e=(I2cEeprom *)dev;
 	int r;
-	r=e->mem[e->adr++];
-	e->adr&=0xff;
+	I2cEeprom *e=(I2cEeprom *)dev;
+	r=e->mem[e->adr];
+	printf("I2cEEprom read: addr %02x val %02x\n", e->adr, r);
+	e->adr++;
+	e->adr&=0xffff;
 	return r;
 }
 
 I2cEeprom *i2ceepromInit(char *filename) {
-	int x;
+	int x, i;
 	I2cEeprom *e=malloc(sizeof(I2cEeprom));
 	e->i2cdev.writeCb=i2ceepromWrite;
 	e->i2cdev.readCb=i2ceepromRead;
@@ -42,9 +52,9 @@ I2cEeprom *i2ceepromInit(char *filename) {
 			perror(filename);
 			exit(1);
 		}
-		write(e->fd, emem, 256);
+		for (i=0; i<256; i++) write(e->fd, emem, 256);
 	}
-	e->mem=mmap(NULL, 256, PROT_READ|PROT_WRITE, MAP_SHARED, e->fd, 0);
+	e->mem=mmap(NULL, 65536, PROT_READ|PROT_WRITE, MAP_SHARED, e->fd, 0);
 	if (e->mem==NULL) {
 		perror("mmap");
 		exit(1);

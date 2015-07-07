@@ -200,13 +200,13 @@ void ioWrite(M6502 *cpu, register word addr, register byte val) {
 			hw->bankSel=val;
 		}
 	} else if (addr==R_PADATA) {
-		printf("PortA: %x\n", val);
+//		printf("PortA: %x\n", val);
 	} else if (addr==R_PBDATA) {
-		printf("PortB: %x\n", val);
+//		printf("PortB: %x\n", val);
 		hw->portBdata&=~1;
 		if (i2cHandle(t->i2cbus, val&2, val&1) && (val&1)) hw->portBdata|=1;
 	} else if (addr==R_PCDATA) {
-		printf("PortC: %x\n", val);
+//		printf("PortC: %x\n", val);
 	} else if (addr==R_INTCLRLO) {
 		int msk=0xffff^(val);
 		hw->iflags&=msk;

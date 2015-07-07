@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
 	rom=loadRoms();
 	tama=tamaInit(rom);
 	while(1) {
-		tamaRun(tama, FCPU/20);
-//		displayDram(tama->dram, tama->lcd.sizex, tama->lcd.sizey);
+		tamaRun(tama, FCPU/10);
+		displayDram(tama->dram, tama->lcd.sizex, tama->lcd.sizey);
 	}
 }
