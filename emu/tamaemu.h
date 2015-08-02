@@ -120,6 +120,7 @@ typedef struct {
 	int c8kCtr, c2kCtr;
 	int t0Div, t0Ctr;
 	int t1Div, t1Ctr;
+	int fpCtr;
 	int cpuDiv, cpuCtr;
 } TamaClk;
 
@@ -132,6 +133,7 @@ typedef struct {
 	int16_t iflags;
 	int8_t nmiflags;
 	int remCpuCycles;
+	int lastInt;
 } TamaHw;
 
 

@@ -7,7 +7,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-//Q&D code to emulate a 64K (or less) EEPROM
+//Q&D code to emulate a 64K (or less) EEPROM like the 24c16
 
 
 int i2ceepromWrite(void *dev, int byteNo, uint8_t byte) {
@@ -18,7 +18,7 @@ int i2ceepromWrite(void *dev, int byteNo, uint8_t byte) {
 		e->adr|=byte;
 	} else {
 		int page=e->adr&0xFFE0;
-		printf("I2CEEprom write: (%d) addr %02X val %02X\n", byteNo-2, e->adr, byte);
+//		printf("I2CEEprom write: (%d) addr %02X val %02X\n", byteNo-2, e->adr, byte);
 		e->mem[e->adr]=byte;
 		e->adr++;
 		//Simulate in-page rollover
@@ -31,7 +31,7 @@ int i2ceepromRead(void *dev, int byteNo) {
 	int r;
 	I2cEeprom *e=(I2cEeprom *)dev;
 	r=e->mem[e->adr];
-	printf("I2cEEprom read: addr %02x val %02x\n", e->adr, r);
+//	printf("I2cEEprom read: addr %02x val %02x\n", e->adr, r);
 	e->adr++;
 	e->adr&=0xffff;
 	return r;

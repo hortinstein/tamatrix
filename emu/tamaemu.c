@@ -28,9 +28,13 @@ void tamaDumpHw(M6502 *cpu) {
 	for (i=0; i<16; i++) {
 		if (ien&(1<<i)) printf("%s ", intfdesc[i]);
 	}
-	printf("\nInt flags:");
+	printf("\nInt flags: ");
 	for (i=0; i<16; i++) {
 		if (hw->iflags&(1<<i)) printf("%s ", intfdesc[i]);
+	}
+	printf("\nLast active int: ");
+	for (i=0; i<16; i++) {
+		if (hw->lastInt&(1<<i)) printf("%s ", intfdesc[i]);
 	}
 	printf("\nNMI ena:");
 	for (i=0; i<8; i++) {
@@ -43,9 +47,10 @@ void tamaDumpHw(M6502 *cpu) {
 	printf("t0B %s, ", t0divb[((REG(R_TIMCTL)>>2)&7)]);
 	printf("T1 %s, ", t1div[((REG(R_TIMCTL)>>0)&3)]);
 	printf("CPU %s\n", ccdiv[REG(R_CLKCTL)&7]);
-	printf("Prescalers: tbl: %d/%d, tbh: %d/%d, c8k: %d, c2k %d, t0: %d/%d, t1: %d/%d, cpu: %d/%d\n",
+	printf("Prescalers: tbl: %07d/%07d, tbh: %05d/%05d, c8k: %04d, c2k %04d, t0: %04d/%04d, t1: %04d/%04d, cpu: %04d/%04d\n",
 		clk->tblCtr, clk->tblDiv, clk->tbhCtr, clk->tbhDiv, clk->c8kCtr, clk->c2kCtr, clk->t0Ctr, clk->t0Div, clk->t1Ctr, clk->t1Div, clk->cpuCtr, clk->cpuDiv);
 	printf("Btn port reads since last press: %d\n", t->btnReads);
+	printf("Current bank: %d\n", hw->bankSel);
 }
 
 unsigned char **loadRoms() {
@@ -108,10 +113,10 @@ void tamaToggleBkunk(Tamagotchi *t) {
 void tamaWakeSrc(Tamagotchi *t, int src) {
 	TamaHw *hw=&t->hw;
 	TamaClk *clk=&t->clk;
-//	REG(R_WAKEFL)|=src; //...maybe?
+	REG(R_WAKEFL)|=src; //...maybe?
 	if (((REG(R_CLKCTL)&7)==7) && ((REG(R_WAKEEN))&src)!=0) {
 		REG(R_WAKEFL)|=src;
-		REG(R_CLKCTL)|=2;
+		REG(R_CLKCTL)=(REG(R_CLKCTL)&0xf8)|2;
 		clk->cpuDiv=8;
 		if (src==1) {
 			printf("Btn wake!\n");
@@ -122,13 +127,7 @@ void tamaWakeSrc(Tamagotchi *t, int src) {
 
 void tamaToggleBtn(Tamagotchi *t, int btn) {
 	TamaHw *hw=&t->hw;
-	if (btn<8) {
-		hw->portAdata^=(1<<(btn));
-	} else if (btn<16) {
-		hw->portBdata^=(1<<(btn-8));
-	} else {
-		hw->portCdata^=(1<<(btn-16));
-	}
+	hw->portAdata^=(1<<(btn));
 	tamaWakeSrc(t, (1<<0));
 }
 
@@ -136,19 +135,22 @@ void tamaPressBtn(Tamagotchi *t, int btn) {
 	if (t->btnReleaseTm!=0) return;
 	tamaToggleBtn(t, btn);
 	t->btnPressed=btn;
-	t->btnReleaseTm=FCPU/3;
+	t->btnReleaseTm=FCPU/2;
 	t->btnReads=0;
 }
 
+//1 - fully implemented
+//2 - ToDo
+//3 - SPU
 static char implemented[]={
 //	0 1 2 3 4 5 6 7 8 9 A B C D E F
-	1,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0, //00
-	0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0, //10
+	1,1,0,0,1,0,3,1,1,0,0,0,0,0,0,0, //00
+	1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0, //10
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, //20
 	1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0, //30
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, //40
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, //50
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, //60
+	0,0,0,0,0,0,0,0,0,1,3,0,0,0,0,0, //40
+	0,3,3,3,3,3,3,3,3,3,3,3,3,0,3,0, //50
+	1,0,3,0,3,3,0,0,0,0,0,0,0,0,0,0, //60
 	1,1,0,1,1,0,1,1,0,0,0,0,0,0,0,0, //70
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, //80
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, //90
@@ -165,7 +167,7 @@ uint8_t ioRead(M6502 *cpu, register word addr) {
 	TamaHw *hw=&t->hw;
 	if (addr==R_PADATA) {
 //		printf("PA: %X\n", hw->portAdata);
-//		cpu->Trace=1;
+//		if (t->bkUnk) cpu->Trace=1;
 		t->btnReads++;
 		return hw->portAdata;
 	} else if (addr==R_PBDATA) {
@@ -180,8 +182,15 @@ uint8_t ioRead(M6502 *cpu, register word addr) {
 		return (t->ioreg[R_NMICTL-0x3000]&0x80)|hw->nmiflags;
 	} else if (addr==R_LVCTL) {
 		return t->ioreg[R_LVCTL-0x3000]&0x83; //battery is always full
+	} else if (addr==0x3055) {
+		cpu->Trace=1;
+		printf("eek unimplemented ioRd 0x%04X\n", addr);
 	} else {
 		if (!implemented[addr&0xff] && t->bkUnk) {
+			if (!cpu->Trace) printf("Unimplemented ioRd 0x%04X\n", addr);
+			cpu->Trace=1;
+		}
+		if (implemented[addr&0xff]==3) {
 			if (!cpu->Trace) printf("Unimplemented ioRd 0x%04X\n", addr);
 			cpu->Trace=1;
 		}
@@ -243,7 +252,7 @@ void ioWrite(M6502 *cpu, register word addr, register byte val) {
 	} else if (addr>=0x3080 && addr<0x3090) {
 		printf("Data\n");
 		t->cpu->Trace=1;
-//	} else if (addr==0x3007) {
+//	} else if (addr==0x3055) {
 //		cpu->Trace=1;
 //		printf("wuctl unimplemented ioWr 0x%04X 0x%02X\n", addr, val);
 	} else {
@@ -268,9 +277,12 @@ void tamaHwTick(Tamagotchi *t) {
 	clk->tbhCtr++;
 	clk->c8kCtr++;
 	clk->c2kCtr++;
+	clk->fpCtr++;
 	if (clk->cpuDiv!=0) clk->cpuCtr++;
 	if (clk->t0Div!=0) clk->t0Ctr++;
 	if (clk->t1Div!=0) clk->t1Ctr++;
+	clk->t1Div=2; //HACK! Prescaler for t1 somehow messes things up, making everything run too slow.
+
 	if (clk->tblCtr>=clk->tblDiv) {
 		clk->tblCtr=0;
 		hw->iflags|=(1<<10);
@@ -291,13 +303,16 @@ void tamaHwTick(Tamagotchi *t) {
 		clk->c8kCtr=0;
 		hw->iflags|=(1<<3);
 	}
-	if (clk->cpuDiv!=0 && clk->cpuCtr>=clk->cpuDiv) {
+	if (clk->cpuDiv!=0 && (clk->cpuCtr>=clk->cpuDiv)) {
 		clk->cpuCtr=0;
-		hw->remCpuCycles++;
+		hw->remCpuCycles+=1; //HACK!
 	}
 	if (clk->t0Div!=0 && clk->t0Ctr>=clk->t0Div) {
 		clk->t0Ctr=0;
 		t0Tick=1;
+	}
+	if (clk->fpCtr>=(FCPU/60)) {
+		hw->iflags|=(1<<0);
 	}
 
 	if (t0Tick) {
@@ -331,7 +346,7 @@ void tamaHwTick(Tamagotchi *t) {
 
 
 	//Fire interrupts if enabled
-	ien=REG(R_INTCTLLO)+(REG(R_INTCTLMI)<<8);
+	ien=REG(R_INTCTLLO)|(REG(R_INTCTLMI)<<8);
 //	if (ien&hw->iflags) printf("Firing int because of iflags 0x%X\n", (ien&hw->iflags));
 	if ((ien&hw->iflags)&(1<<0)) Int6502(R, INT_IRQ, IRQVECT_FP);
 	if ((ien&hw->iflags)&(1<<1)) Int6502(R, INT_IRQ, IRQVECT_SPI);
@@ -339,12 +354,15 @@ void tamaHwTick(Tamagotchi *t) {
 	if ((ien&hw->iflags)&(1<<3)) Int6502(R, INT_IRQ, IRQVECT_FROSCD8K);
 	if ((ien&hw->iflags)&(1<<4)) Int6502(R, INT_IRQ, IRQVECT_FROSCD2K);
 	if ((ien&hw->iflags)&(1<<7)) Int6502(R, INT_IRQ, IRQVECT_T0);
-	if ((ien&hw->iflags)&(1<<10)) Int6502(R, INT_IRQ, IRQVECT_TBL);
+	if ((ien&hw->iflags)&(1<<10)) Int6502(R, INT_IRQ, IRQVECT_TBL); //seems to be for animation, 2Hz
 	if ((ien&hw->iflags)&(1<<11)) Int6502(R, INT_IRQ, IRQVECT_TBH);
 	if ((ien&hw->iflags)&(1<<13)) Int6502(R, INT_IRQ, IRQVECT_T1);
+	//debug: remember last irq somewhere
+	if (ien&hw->iflags) hw->lastInt=(ien&hw->iflags);
+
 	//Fire NMI
 	if (REG(R_NMICTL)&0x80) {
-		//Should be edge triggred. The timer is. An implementation of lv may not be.
+		//Should be edge triggered. The timer is. An implementation of lv may not be.
 		hw->nmiflags|=nmiTrigger;
 		if (REG(R_NMICTL)&nmiTrigger) {
 			Int6502(R, INT_NMI, 0);
@@ -352,7 +370,8 @@ void tamaHwTick(Tamagotchi *t) {
 	}
 
 	//Handle stupid hackish button release...
-	if (t->btnReleaseTm!=0 && t->btnReads>5) {
+//	if (t->btnReleaseTm!=0 && t->btnReads>5) {
+	if (t->btnReleaseTm!=0) {
 		t->btnReleaseTm--;
 		if (t->btnReleaseTm==0) {
 			tamaToggleBtn(t, t->btnPressed);
