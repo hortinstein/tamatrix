@@ -91,7 +91,8 @@ void tamaClkRecalc(Tamagotchi *t) {
 	const int tbhdiv[]={FCPU/128, FCPU/512, FCPU/256, FCPU/1000};
 	const int t0diva[]={0, 1, FCPU/32767, 1, 0, 0, 0, 0};
 	const int t0divb[]={0, 0, 0, 0, FCPU/2, FCPU/8, FCPU/32, FCPU/64};
-	const int t1div[]={0, 1, FCPU/32768, 0};
+//	const int t1div[]={0, 1, FCPU/32768, 0};
+	const int t1div[]={0, 1, 4, 0}; //HACK! Real table seems to increase T1 too slowly.
 	const int ccdiv[]={2, 4, 8, 16, 32, 64, 128, 0};
 
 	clk->tblDiv=tbldiv[((REG(R_TIMBASE)>>2)&3)];
@@ -111,7 +112,7 @@ void tamaToggleBkunk(Tamagotchi *t) {
 
 //feed R_WAKEFL value
 void tamaWakeSrc(Tamagotchi *t, int src) {
-	TamaHw *hw=&t->hw;
+//	TamaHw *hw=&t->hw;
 	TamaClk *clk=&t->clk;
 	REG(R_WAKEFL)|=src; //...maybe?
 	if (((REG(R_CLKCTL)&7)==7) && ((REG(R_WAKEEN))&src)!=0) {
@@ -265,7 +266,7 @@ void ioWrite(M6502 *cpu, register word addr, register byte val) {
 }
 
 
-void tamaHwTick(Tamagotchi *t) {
+int tamaHwTick(Tamagotchi *t, int gran) {
 	TamaHw *hw=&t->hw;
 	TamaClk *clk=&t->clk;
 	M6502 *R=t->cpu;
@@ -273,66 +274,67 @@ void tamaHwTick(Tamagotchi *t) {
 	int nmiTrigger=0;
 	int ien;
 
-	clk->tblCtr++;
-	clk->tbhCtr++;
-	clk->c8kCtr++;
-	clk->c2kCtr++;
-	clk->fpCtr++;
-	if (clk->cpuDiv!=0) clk->cpuCtr++;
-	if (clk->t0Div!=0) clk->t0Ctr++;
-	if (clk->t1Div!=0) clk->t1Ctr++;
-	clk->t1Div=2; //HACK! Prescaler for t1 somehow messes things up, making everything run too slow.
+	clk->tblCtr+=gran;
+	clk->tbhCtr+=gran;
+	clk->c8kCtr+=gran;
+	clk->c2kCtr+=gran;
+	clk->fpCtr+=gran;
+	if (clk->cpuDiv!=0) clk->cpuCtr+=gran;
+	if (clk->t0Div!=0) clk->t0Ctr+=gran;
+	if (clk->t1Div!=0) clk->t1Ctr+=gran;
 
-	if (clk->tblCtr>=clk->tblDiv) {
-		clk->tblCtr=0;
+	while (clk->tblCtr>=clk->tblDiv) {
+		clk->tblCtr-=clk->tblDiv;
 		hw->iflags|=(1<<10);
-		if (((REG(R_TIMCTL)>>2)&7)==1) t0Tick=1;
+		if (((REG(R_TIMCTL)>>2)&7)==1) t0Tick++;
 		tamaWakeSrc(t, (1<<1));
 	}
-	if (clk->tbhCtr>=clk->tbhDiv) {
-		clk->tbhCtr=0;
+	while (clk->tbhCtr>=clk->tbhDiv) {
+		clk->tbhCtr-=clk->tbhDiv;
 		hw->iflags|=(1<<11);
-		if (((REG(R_TIMCTL)>>2)&7)==2) t0Tick=1;
+		if (((REG(R_TIMCTL)>>2)&7)==2) t0Tick++;
 		tamaWakeSrc(t, (1<<3));
 	}
+
 	if (clk->c2kCtr>=2048) {
-		clk->c2kCtr=0;
+		clk->c2kCtr&=2047;
 		hw->iflags|=(1<<4);
 	}
 	if (clk->c8kCtr>=8192) {
-		clk->c8kCtr=0;
+		clk->c8kCtr&=8191;
 		hw->iflags|=(1<<3);
 	}
 	if (clk->cpuDiv!=0 && (clk->cpuCtr>=clk->cpuDiv)) {
-		clk->cpuCtr=0;
-		hw->remCpuCycles+=1; //HACK!
+		hw->remCpuCycles+=clk->cpuCtr/clk->cpuDiv;
+		clk->cpuCtr=clk->cpuCtr%clk->cpuDiv;
 	}
-	if (clk->t0Div!=0 && clk->t0Ctr>=clk->t0Div) {
-		clk->t0Ctr=0;
-		t0Tick=1;
+	while (clk->t0Div!=0 && clk->t0Ctr>=clk->t0Div) {
+		clk->t0Ctr-=clk->t0Div;
+		t0Tick++;
 	}
 	if (clk->fpCtr>=(FCPU/60)) {
 		hw->iflags|=(1<<0);
 	}
 
-	if (t0Tick) {
+	while (t0Tick) {
 		REG(R_TM0LO)++;
 		if (REG(R_TM0LO)==0) {
 			REG(R_TM0HI)++;
 			if (REG(R_TM0HI)==0) {
 				hw->iflags|=(1<<7);
-				if (((REG(R_TIMCTL))&3)==3) t1Tick=1;
+				if (((REG(R_TIMCTL))&3)==3) t1Tick++;
 				tamaWakeSrc(t, (1<<2));
 			}
 		}
+		t0Tick--;
 	}
 
-	if (clk->t1Div!=0 && clk->t1Ctr>=clk->t1Div) {
-		clk->t1Ctr=0;
-		t1Tick=1;
+	while (clk->t1Div!=0 && clk->t1Ctr>=clk->t1Div) {
+		clk->t1Ctr-=clk->t1Div;
+		t1Tick++;
 	}
 
-	if (t1Tick) {
+	while (t1Tick) {
 		REG(R_TM1LO)++;
 		if (REG(R_TM1LO)==0) {
 			REG(R_TM1HI)++;
@@ -342,6 +344,7 @@ void tamaHwTick(Tamagotchi *t) {
 				tamaWakeSrc(t, (1<<4));
 			}
 		}
+		t1Tick--;
 	}
 
 
@@ -370,10 +373,9 @@ void tamaHwTick(Tamagotchi *t) {
 	}
 
 	//Handle stupid hackish button release...
-//	if (t->btnReleaseTm!=0 && t->btnReads>5) {
 	if (t->btnReleaseTm!=0) {
-		t->btnReleaseTm--;
-		if (t->btnReleaseTm==0) {
+		t->btnReleaseTm-=gran;
+		if (t->btnReleaseTm<=0) {
 			tamaToggleBtn(t, t->btnPressed);
 			tamaWakeSrc(t, (1<<0));
 			printf("Release btn %d\n", t->btnPressed);
@@ -384,6 +386,7 @@ void tamaHwTick(Tamagotchi *t) {
 	if (hw->remCpuCycles>0) {
 		hw->remCpuCycles=Exec6502(t->cpu, hw->remCpuCycles);
 	}
+	return gran;
 }
 
 uint8_t tamaReadCb(M6502 *cpu, register word addr) {
@@ -454,7 +457,7 @@ Tamagotchi *tamaInit(unsigned char **rom) {
 
 void tamaRun(Tamagotchi *tama, int cycles) {
 	int i;
-	for (i=0; i<cycles; i++) tamaHwTick(tama);
+	while (cycles>0) cycles-=tamaHwTick(tama, 128);
 }
 
 

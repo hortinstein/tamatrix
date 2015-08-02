@@ -79,7 +79,7 @@ int main(int argc, char **argv) {
 	tama=tamaInit(rom);
 	while(1) {
 		clock_gettime(CLOCK_MONOTONIC, &tstart);
-		tamaRun(tama, FCPU/FPS);
+		tamaRun(tama, FCPU/FPS-1);
 		displayDram(tama->dram, tama->lcd.sizex, tama->lcd.sizey);
 		tamaDumpHw(tama->cpu);
 		clock_gettime(CLOCK_MONOTONIC, &tend);
