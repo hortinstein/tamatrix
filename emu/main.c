@@ -60,7 +60,7 @@ int getKey() {
 	select(1, &fds, NULL, NULL, &tv);
 	if (FD_ISSET(0, &fds)) {
 		fgets(buff, 99, stdin);
-		return atoi(buff);
+		return buff[0];
 	} else {
 		return 0;
 	}
@@ -73,13 +73,14 @@ int main(int argc, char **argv) {
 	unsigned char **rom;
 	long us;
 	int k;
+	int speedup=0;
 	struct timespec tstart, tend;
 	signal(SIGINT, sigintHdlr);
 	rom=loadRoms();
 	tama=tamaInit(rom);
 	while(1) {
 		clock_gettime(CLOCK_MONOTONIC, &tstart);
-		tamaRun(tama, FCPU/FPS-1);
+		tamaRun(tama, speedup?FCPU:FCPU/FPS-1);
 		displayDram(tama->dram, tama->lcd.sizex, tama->lcd.sizey);
 		tamaDumpHw(tama->cpu);
 		clock_gettime(CLOCK_MONOTONIC, &tend);
@@ -87,11 +88,11 @@ int main(int argc, char **argv) {
 		us+=(tend.tv_sec-tstart.tv_sec)*1000000L;
 		us=(1000000L/FPS)-us;
 		printf("Time left in frame: %d us\n", us);
-		if (us>0) usleep(us);
+		if (!speedup && us>0) usleep(us);
 		k=getKey();
-		if (k>0) {
-			tamaPressBtn(tama, k-1);
-		}
-
+		if (k=='1') tamaPressBtn(tama, 0);
+		if (k=='2') tamaPressBtn(tama, 1);
+		if (k=='3') tamaPressBtn(tama, 2);
+		if (k=='s') speedup=!speedup;
 	}
 }
