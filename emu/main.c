@@ -8,37 +8,9 @@
 #include <sys/select.h>
 
 
+#include "lcd.h"
+#include "benevolentai.h"
 
-//tama lcd is 48x32
-void displayDram(uint8_t *ram, int sx, int sy) {
-	char *icons[]={"INFO", "FOOD", "TOILET", "DOORS", "FIGURE",
-				"TRAINING", "MEDICAL", "IR", "ALBUM", "ATTENTION"};
-	int x, y;
-	int b, p;
-	char grays[]=" '*M";
-	printf("\033[45;1H\033[1J\033[1;1H");
-	for (y=0; y<sy+1; y++) {
-		for (x=0; x<sx; x++) {
-			if (y>=16) {
-				p=x+(sy-y-1)*sx;
-			} else {
-				p=x+(sy-(15-y)-1)*sx;
-			}
-			b=ram[p/4];
-			b=(b>>((3-(p&3))*2))&3;
-			putchar(grays[b]);
-			putchar(grays[b]);
-		}
-		putchar('\n');
-	}
-	printf(">>> ");
-	for (x=19; x<29; x++) {
-		b=ram[x/4];
-		b=(b>>((3-(x&3))*2))&3;
-		if (b!=0) printf("%s ", icons[x-19]);
-	}
-	printf("<<<\n");
-}
 
 Tamagotchi *tama;
 
@@ -67,7 +39,7 @@ int getKey() {
 }
 
 
-#define FPS 10
+#define FPS 5
 
 int main(int argc, char **argv) {
 	unsigned char **rom;
@@ -75,14 +47,18 @@ int main(int argc, char **argv) {
 	int k;
 	int speedup=0;
 	struct timespec tstart, tend;
+	Display display;
 	signal(SIGINT, sigintHdlr);
 	rom=loadRoms();
 	tama=tamaInit(rom);
+	benevolentAiInit();
 	while(1) {
 		clock_gettime(CLOCK_MONOTONIC, &tstart);
-		tamaRun(tama, speedup?FCPU:FCPU/FPS-1);
-		displayDram(tama->dram, tama->lcd.sizex, tama->lcd.sizey);
+		tamaRun(tama, FCPU/FPS-1);
+		lcdRender(tama->dram, tama->lcd.sizex, tama->lcd.sizey, &display);
+		lcdShow(&display);
 		tamaDumpHw(tama->cpu);
+		k=benevolentAiRun(&display);
 		clock_gettime(CLOCK_MONOTONIC, &tend);
 		us=(tend.tv_nsec-tstart.tv_nsec)/1000;
 		us+=(tend.tv_sec-tstart.tv_sec)*1000000L;

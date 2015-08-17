@@ -136,7 +136,7 @@ void tamaPressBtn(Tamagotchi *t, int btn) {
 	if (t->btnReleaseTm!=0) return;
 	tamaToggleBtn(t, btn);
 	t->btnPressed=btn;
-	t->btnReleaseTm=FCPU/2;
+	t->btnReleaseTm=FCPU/20;
 	t->btnReads=0;
 }
 

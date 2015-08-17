@@ -1,6 +1,6 @@
 LDFLAGS := 
 CFLAGS := -ggdb -Wall -O2
-OBJS := main.o tamaemu.o i2c.o i2ceeprom.o
+OBJS := main.o tamaemu.o i2c.o i2ceeprom.o lcd.o benevolentai.o
 
 all: tamaemu
 
