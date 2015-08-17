@@ -4,6 +4,8 @@
 #include "lcd.h"
 
 void benevolentAiInit();
-int benevolentAiRun(Display *lcd);
+int benevolentAiRun(Display *lcd, int mspassed);
+int benevolentAiMacroRun(char *name);
+
 
 #endif

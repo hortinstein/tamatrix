@@ -19,6 +19,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "../tamaemu.h"
+#include "../benevolentai.h"
 
 #ifdef INES
 #include "NES.h"
@@ -250,6 +251,12 @@ byte Debug6502(M6502 *R)
       case 'R':
         printf("Hw dump:\n");
         tamaDumpHw(R);
+        break;
+      case 'E':
+        if (benevolentAiMacroRun(S+2)) {
+			R->Trace=0;
+			return 1;
+		}
         break;
     }
   }

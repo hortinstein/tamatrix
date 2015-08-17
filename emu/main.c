@@ -39,7 +39,7 @@ int getKey() {
 }
 
 
-#define FPS 5
+#define FPS 10
 
 int main(int argc, char **argv) {
 	unsigned char **rom;
@@ -58,7 +58,10 @@ int main(int argc, char **argv) {
 		lcdRender(tama->dram, tama->lcd.sizex, tama->lcd.sizey, &display);
 		lcdShow(&display);
 		tamaDumpHw(tama->cpu);
-		k=benevolentAiRun(&display);
+		k=benevolentAiRun(&display, 1000/FPS);
+		if (k&1) tamaPressBtn(tama, 0);
+		if (k&2) tamaPressBtn(tama, 1);
+		if (k&4) tamaPressBtn(tama, 2);
 		clock_gettime(CLOCK_MONOTONIC, &tend);
 		us=(tend.tv_nsec-tstart.tv_nsec)/1000;
 		us+=(tend.tv_sec-tstart.tv_sec)*1000000L;
