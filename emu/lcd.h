@@ -22,5 +22,7 @@ typedef struct {
 
 void lcdShow(Display *lcd);
 void lcdRender(uint8_t *ram, int sx, int sy, Display *lcd);
+void lcdDump(uint8_t *ram, int sx, int sy, char *fn);
+
 
 #endif

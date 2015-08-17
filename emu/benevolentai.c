@@ -15,17 +15,20 @@ int waitTimeMs=0;
 int cmd, arg;
 int state=0;
 
+int hunger=-1;
+int happy=-1;
+
 
 #define ST_IDLE 0
 #define ST_NEXT 1
 #define ST_ICONSEL 2
 
 
-
 static Macro macros[]={
 	{"feedmeal", "s2,p2,p2,p2,w80,p3"},
 	{"feedsnack", "s2,p2,p1,p2,p2,w80,p3"},
 	{"loadeep", "w10,p2,p2"},
+	{"updvars", "s1,p2,p1,m,p3"},
 	{"tst", "s8"},
 	{"", ""}
 };
@@ -55,6 +58,7 @@ void benevolentAiInit() {
 
 //Returns a bitmap of buttons if the macro requires pressing one, or -1 if no macro is running.
 int macroRun(Display *lcd, int mspassed) {
+	int i;
 	if (state==ST_IDLE) return -1;
 	waitTimeMs-=mspassed;
 	if (waitTimeMs>0) return 0;
@@ -83,6 +87,13 @@ int macroRun(Display *lcd, int mspassed) {
 				state=ST_ICONSEL;
 				waitTimeMs=0;
 				return 0;
+			} else if (cmd=='m') {
+				//Assume we're on the hunger/happy screen; we can now measure the amount of heart filled.
+				hunger=0; happy=0;
+				for (i=0; i<5; i++) {
+					if (lcd->p[10][i*10+6]==3) hunger++;
+					if (lcd->p[26][i*10+6]==3) happy++;
+				}
 			} else {
 				printf("Huh? Unknown macro cmd %c (macro %d pos %d)\n", cmd, curMacro, macroPos);
 				exit(0);
@@ -92,6 +103,7 @@ int macroRun(Display *lcd, int mspassed) {
 		if (lcd->icons&(1<<(arg-1))) {
 			state=ST_NEXT;
 		} else {
+			//ToDo: See if icons actually change
 			waitTimeMs=300;
 			return (1<<0);
 		}

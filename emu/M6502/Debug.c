@@ -20,6 +20,7 @@
 #include <ctype.h>
 #include "../tamaemu.h"
 #include "../benevolentai.h"
+#include "../lcd.h"
 
 #ifdef INES
 #include "NES.h"
@@ -126,6 +127,7 @@ byte Debug6502(M6502 *R)
   char S[128];
   byte *P,F;
   int J,I,K;
+		Tamagotchi *tama=(Tamagotchi *)R->User;
 
   DAsm(R, S,R->PC.W);
 
@@ -180,6 +182,8 @@ byte Debug6502(M6502 *R)
 		printf("r          : Show hardware reg info\n");
 		printf("u          : Toggle break on unknown io r/w\n");
 		printf("p x        : Press button x\n");
+		printf("e macroname: Execute given macro name\n");
+		printf("l filename : Dump lcd data to file\n");
         printf("?,h        : Show this help text\n");
         printf("q          : Exit emulation\n");
         break;
@@ -207,6 +211,10 @@ byte Debug6502(M6502 *R)
 		tamaPressBtn((Tamagotchi*)R->User, atoi(S+1));
 		R->Trace=0;
 		return(1);
+      case 'L':
+		lcdDump(tama->dram, tama->lcd.sizex, tama->lcd.sizey, S+2);
+		R->Trace=0;
+		return 1;
       case 'V':
         printf("\n6502 Interrupt Vectors:\n");
         printf("[$FFFC] INIT: $%04X\n",R->Rd6502(R, 0xFFFC)+256*R->Rd6502(R, 0xFFFD));
