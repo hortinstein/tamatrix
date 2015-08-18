@@ -1,3 +1,5 @@
 **/*.o
 **/*.a
 tamaemu
+screens.c
+imgmatch/compress

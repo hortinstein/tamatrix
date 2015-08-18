@@ -56,9 +56,9 @@ int main(int argc, char **argv) {
 		clock_gettime(CLOCK_MONOTONIC, &tstart);
 		tamaRun(tama, FCPU/FPS-1);
 		lcdRender(tama->dram, tama->lcd.sizex, tama->lcd.sizey, &display);
+		k=benevolentAiRun(&display, 1000/FPS);
 		lcdShow(&display);
 		tamaDumpHw(tama->cpu);
-		k=benevolentAiRun(&display, 1000/FPS);
 		if (k&1) tamaPressBtn(tama, 0);
 		if (k&2) tamaPressBtn(tama, 1);
 		if (k&4) tamaPressBtn(tama, 2);

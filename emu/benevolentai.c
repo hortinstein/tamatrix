@@ -2,6 +2,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include "lcdmatch.h"
+#include "screens.h"
+
 
 typedef struct {
 	char *name;
@@ -29,6 +32,7 @@ static Macro macros[]={
 	{"feedsnack", "s2,p2,p1,p2,p2,w80,p3"},
 	{"loadeep", "w10,p2,p2"},
 	{"updvars", "s1,p2,p1,m,p3"},
+	{"toilet", "s3,p2,w50,s6,p2,p1,p2"},
 	{"tst", "s8"},
 	{"", ""}
 };
@@ -114,6 +118,10 @@ int macroRun(Display *lcd, int mspassed) {
 
 int benevolentAiRun(Display *lcd, int mspassed) {
 	int r=macroRun(lcd, mspassed);
-	if (r<0) return 0;
+	if (r==-1) {
+		//if (lcdmatch(lcd, screen_poopie1)) benevolentAiMacroRun("toilet");
+		if (lcdmatch(lcd, screen_poopie1) || lcdmatch(lcd, screen_poopie2)) benevolentAiMacroRun("toilet");
+		return 0;
+	}
 	return r;
 }

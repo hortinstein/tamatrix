@@ -59,17 +59,11 @@ void lcdDump(uint8_t *ram, int sx, int sy, char *out) {
 	FILE *f=fopen(out, "w");
 	if (f==NULL) return;
 	lcdRender(ram, sx, sy, &lcd);
-	fprintf(f, "const char screenSomething= \\\n");
 	for (y=0; y<32; y++) {
-		fprintf(f, "\t\"");
 		for (x=0; x<48; x++) {
 			fprintf(f, "%c", ochar[lcd.p[y][x]&3]);
 		}
-		if (y<31) {
-			fprintf(f, "\"\\\n");
-		} else {
-			fprintf(f, "\";\n\n");
-		}
+		fprintf(f, "\n");
 	}
 	fclose(f);
 }
