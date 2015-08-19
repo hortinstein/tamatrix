@@ -1,5 +1,5 @@
-LDFLAGS := 
-CFLAGS := -ggdb -Wall -O2
+LDFLAGS := -lgcc -fprofile-generate
+CFLAGS := -ggdb -Wall -O2 -fprofile-generate
 OBJS := main.o tamaemu.o i2c.o i2ceeprom.o lcd.o benevolentai.o lcdmatch.o screens.o
 
 all: tamaemu

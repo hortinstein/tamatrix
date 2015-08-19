@@ -20,7 +20,7 @@ int state=0;
 
 int hunger=-1;
 int happy=-1;
-
+int oldIcon=-1;
 
 #define ST_IDLE 0
 #define ST_NEXT 1
@@ -28,11 +28,18 @@ int happy=-1;
 
 
 static Macro macros[]={
-	{"feedmeal", "s2,p2,p2,p2,w80,p3"},
-	{"feedsnack", "s2,p2,p1,p2,p2,w80,p3"},
-	{"loadeep", "w10,p2,p2"},
-	{"updvars", "s1,p2,p1,m,p3"},
-	{"toilet", "s3,p2,w50,s6,p2,p1,p2"},
+	{"feedmeal", "s2,p2,p2,p2,w90,p3,p3"},
+	{"feedsnack", "s2,p2,p1,p2,p2,w90,p3,p3"},
+	{"train", "s6,p2,p2,w40"},
+	{"medicine", "s7,p2,w40"},
+	{"loadeep", "w10,p2,p2,w20"},
+	{"updvars", "s1,p2,w10,p1,w10,m,p3"},
+	{"toilet", "w10,s3,p2,p2,w50"},
+	{"toiletpraise", "w10,s3,p2,p2,w50,s6,p2,p1,p2,w50"},
+	{"lightoff", "p3,w20"},
+	{"playstb", "s4,p2,p2,w90,p2"},
+	{"exitgame", "p3"},
+	{"stbshoot", "p2"},
 	{"tst", "s8"},
 	{"", ""}
 };
@@ -41,6 +48,7 @@ static Macro macros[]={
 
 int benevolentAiMacroRun(char *name) {
 	int i=0;
+	if (state!=ST_IDLE) return 0;
 	while (strcasecmp(macros[i].name, name)!=0 && macros[i].name[0]!=0) i++;
 	if (macros[i].name[0]==0) {
 		printf("Macro %s not found. Available macros:\n", name);
@@ -76,11 +84,13 @@ int macroRun(Display *lcd, int mspassed) {
 		} else {
 			cmd=macros[curMacro].code[macroPos++];
 			arg=atoi(&macros[curMacro].code[macroPos]);
+			//Find ',' or end of string
 			while (macros[curMacro].code[macroPos]!=',' && macros[curMacro].code[macroPos]!=0) macroPos++;
+			//Skip past ','
 			if (macros[curMacro].code[macroPos]==',') macroPos++;
 			if (cmd=='p') {
 				//Press a button
-				waitTimeMs=200;
+				waitTimeMs=300;
 				return (1<<(arg-1));
 			} else if (cmd=='w') {
 				//Wait x deciseconds
@@ -90,6 +100,7 @@ int macroRun(Display *lcd, int mspassed) {
 				//Select icon...
 				state=ST_ICONSEL;
 				waitTimeMs=0;
+				oldIcon=-1;
 				return 0;
 			} else if (cmd=='m') {
 				//Assume we're on the hunger/happy screen; we can now measure the amount of heart filled.
@@ -107,21 +118,124 @@ int macroRun(Display *lcd, int mspassed) {
 		if (lcd->icons&(1<<(arg-1))) {
 			state=ST_NEXT;
 		} else {
-			//ToDo: See if icons actually change
 			waitTimeMs=300;
-			return (1<<0);
+			if (oldIcon==lcd->icons) {
+				//Icon didn't change. Maybe press 'back'?
+				oldIcon=-1;
+				return (1<<3);
+			} else {
+				//Not there yet. Select next icon.
+				return (1<<0);
+			}
 		}
 	}
 	return 0;
 }
 
 
-int benevolentAiRun(Display *lcd, int mspassed) {
-	int r=macroRun(lcd, mspassed);
-	if (r==-1) {
-		//if (lcdmatch(lcd, screen_poopie1)) benevolentAiMacroRun("toilet");
-		if (lcdmatch(lcd, screen_poopie1) || lcdmatch(lcd, screen_poopie2)) benevolentAiMacroRun("toilet");
-		return 0;
+static int getDarkPixelCnt(Display *lcd) {
+	int c=0;
+	int x, y;
+	for (y=0; y<32; y++) {
+		for (x=0; x<48; x++) {
+			if (lcd->p[y][x]==3) c++;
+		}
 	}
-	return r;
+	return c;
+}
+
+#define BA_IDLE 0
+#define BA_CHECKFOOD 1
+#define BA_FEED 2
+#define BA_RECHECKFOOD 3
+#define BA_RECHECKLESSHUNGRY 4
+#define BA_STB 5
+
+int baTimeMs;
+int baState=BA_IDLE;
+int oldPxCnt;
+
+int oldHunger;
+int oldHappy;
+
+void benevolentAiDump() {
+	printf("Current macro: ");
+	if (state==ST_IDLE) {
+		printf("None.\n");
+	} else {
+		printf("%s, at cmd %c arg %d\n", macros[curMacro].name, cmd, arg);
+	}
+}
+
+
+int benevolentAiRun(Display *lcd, int mspassed) {
+	int i;
+	int r=macroRun(lcd, mspassed);
+	if (r!=-1) return r;
+	baTimeMs+=mspassed;
+
+	if (baState==BA_IDLE) {
+		if (lcdmatch(lcd, screen_poopie1) || lcdmatch(lcd, screen_poopie2)|| lcdmatch(lcd, screen_poopie3)) {
+			benevolentAiMacroRun("toilet");
+		} else if (lcdmatchMovable(lcd, screen_pooping1, -16, 2) || lcdmatchMovable(lcd, screen_pooping2, -16, 2)) {
+			benevolentAiMacroRun("toiletpraise");
+		} else if (lcdmatch(lcd, screen_sick1) || lcdmatch(lcd, screen_sick2)){
+			benevolentAiMacroRun("medicine");
+		} else if (lcdmatchMovable(lcd, screen_sleep1, -16, 2) || lcdmatchMovable(lcd, screen_sleep2, -2, 2)) {
+			benevolentAiMacroRun("lightoff");
+			baTimeMs=0;
+		} else if (lcdmatchMovable(lcd, screen_dark1, -16, 2) || lcdmatchMovable(lcd, screen_dark2, -2, 2)|| lcdmatchMovable(lcd, screen_dark3, -2, 2)) {
+			baTimeMs=0; //Don't wake up to check info
+		} else if (lcdmatch(lcd, screen_alert)){
+			benevolentAiMacroRun("train");
+		} else if (baTimeMs>300*1000) {
+			//We need to check for health etc
+			baTimeMs=0;
+			baState=BA_CHECKFOOD;
+		} else {
+			i=getDarkPixelCnt(lcd);
+			if (i<(oldPxCnt-5) || i>(oldPxCnt+5)) {
+				printf("Pix cnt %d, was %d\n", i, oldPxCnt);
+				oldPxCnt=i;
+				return 8;
+			}
+		}
+	} else if (baState==BA_CHECKFOOD) {
+		benevolentAiMacroRun("updvars");
+		baState=BA_FEED;
+	} else if (baState==BA_FEED) {
+		oldHunger=hunger;
+		oldHappy=happy;
+		if (hunger<4) {
+			benevolentAiMacroRun("feedmeal");
+			baState=BA_RECHECKFOOD;
+		} else if (happy<4) {
+			benevolentAiMacroRun("feedsnack");
+			baState=BA_RECHECKFOOD;
+		} else {
+			baState=BA_IDLE;
+			baState=BA_STB;
+			benevolentAiMacroRun("playstb");
+		}
+	} else if (baState==BA_RECHECKFOOD) {
+		benevolentAiMacroRun("updvars");
+		baState=BA_RECHECKLESSHUNGRY;
+	} else if (baState==BA_RECHECKLESSHUNGRY) {
+		if (hunger!=oldHunger || happy!=oldHappy) {
+			//Okay, we got less hungry/happy. Feed again if needed.
+			baState=BA_FEED;
+		} else {
+			//Hmm, doesn't want to eat. Maybe it's sick?
+			benevolentAiMacroRun("medicine");
+			baState=BA_FEED;
+		}
+	} else if (baState==BA_STB) {
+		if (lcdmatchMovable(lcd, screen_stb1,-25,0) || lcdmatchMovable(lcd, screen_stb2,-25,0)|| lcdmatchMovable(lcd, screen_stb3,-25,0) || lcdmatchMovable(lcd, screen_stb4,-25,0)) {
+			benevolentAiMacroRun("stbshoot");
+		} else if (lcdmatch(lcd, screen_gameend)) {
+			benevolentAiMacroRun("exitgame");
+			baState=BA_IDLE;
+		}
+	}
+	return 0;
 }

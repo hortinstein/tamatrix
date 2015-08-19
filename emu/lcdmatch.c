@@ -1,14 +1,16 @@
 #include "lcdmatch.h"
 
-int lcdmatch(Display *lcd, const unsigned char *screen) {
+
+int lcdmatchOffs(Display *lcd, const unsigned char *screen, int yoff) {
 	int p=0;
 	int x=0;
-	int y=0;
+	int y=yoff;
 	while (y<32) {
 		if (screen[p]&0x80) {
 			x+=(screen[p]&0x7f);
 		} else {
 //			lcd->p[y][x]=3;
+			if (y<0 && y>=32) return 0;
 			if (screen[p]=='.' && lcd->p[y][x]==3) return 0;
 			if (screen[p]=='X' && lcd->p[y][x]!=3) return 0;
 			x++;
@@ -20,4 +22,16 @@ int lcdmatch(Display *lcd, const unsigned char *screen) {
 		p++;
 	}
 	return 1;
+}
+
+int lcdmatch(Display *lcd, const unsigned char *screen) {
+	return lcdmatchOffs(lcd, screen, 0);
+}
+
+int lcdmatchMovable(Display *lcd, const unsigned char *screen, int bot, int top) {
+	int i;
+	for (i=bot; i<top; i++) {
+		if (lcdmatchOffs(lcd, screen, i)) return 1;
+	}
+	return 0;
 }

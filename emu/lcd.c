@@ -56,7 +56,7 @@ void lcdDump(uint8_t *ram, int sx, int sy, char *out) {
 	int x, y;
 	Display lcd;
 	char ochar[]="   X";
-	FILE *f=fopen(out, "w");
+	FILE *f=fopen(out, "a");
 	if (f==NULL) return;
 	lcdRender(ram, sx, sy, &lcd);
 	for (y=0; y<32; y++) {
@@ -65,5 +65,7 @@ void lcdDump(uint8_t *ram, int sx, int sy, char *out) {
 		}
 		fprintf(f, "\n");
 	}
+	fprintf(f, "\n");
 	fclose(f);
 }
+

@@ -46,6 +46,8 @@ int main(int argc, char **argv) {
 	long us;
 	int k;
 	int speedup=0;
+	int stopDisplay=0;
+	int t=0;
 	struct timespec tstart, tend;
 	Display display;
 	signal(SIGINT, sigintHdlr);
@@ -57,8 +59,18 @@ int main(int argc, char **argv) {
 		tamaRun(tama, FCPU/FPS-1);
 		lcdRender(tama->dram, tama->lcd.sizex, tama->lcd.sizey, &display);
 		k=benevolentAiRun(&display, 1000/FPS);
-		lcdShow(&display);
-		tamaDumpHw(tama->cpu);
+		if (!speedup || (t&15)==0) {
+			lcdShow(&display);
+			tamaDumpHw(tama->cpu);
+			benevolentAiDump();
+		}
+		if ((k&8)) {
+			lcdDump(tama->dram, tama->lcd.sizex, tama->lcd.sizey, "lcddump.lcd");
+			if (stopDisplay) {
+				tama->cpu->Trace=1;
+				speedup=0;
+			}
+		}
 		if (k&1) tamaPressBtn(tama, 0);
 		if (k&2) tamaPressBtn(tama, 1);
 		if (k&4) tamaPressBtn(tama, 2);
@@ -66,12 +78,14 @@ int main(int argc, char **argv) {
 		us=(tend.tv_nsec-tstart.tv_nsec)/1000;
 		us+=(tend.tv_sec-tstart.tv_sec)*1000000L;
 		us=(1000000L/FPS)-us;
-		printf("Time left in frame: %d us\n", us);
+//		printf("Time left in frame: %d us\n", us);
 		if (!speedup && us>0) usleep(us);
 		k=getKey();
 		if (k=='1') tamaPressBtn(tama, 0);
 		if (k=='2') tamaPressBtn(tama, 1);
 		if (k=='3') tamaPressBtn(tama, 2);
 		if (k=='s') speedup=!speedup;
+		if (k=='d') stopDisplay=!stopDisplay;
+		t++;
 	}
 }
