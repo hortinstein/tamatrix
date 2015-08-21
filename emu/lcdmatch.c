@@ -10,7 +10,7 @@ int lcdmatchOffs(Display *lcd, const unsigned char *screen, int yoff) {
 			x+=(screen[p]&0x7f);
 		} else {
 //			lcd->p[y][x]=3;
-			if (y<0 && y>=32) return 0;
+			if (y<0 && y>32) return 0;
 			if (screen[p]=='.' && lcd->p[y][x]==3) return 0;
 			if (screen[p]=='X' && lcd->p[y][x]!=3) return 0;
 			x++;

@@ -38,8 +38,10 @@ static Macro macros[]={
 	{"toiletpraise", "w10,s3,p2,p2,w50,s6,p2,p1,p2,w50"},
 	{"lightoff", "p3,w20"},
 	{"playstb", "s4,p2,p2,w90,p2"},
+	{"playjump", "s4,p2,p2,w90,p1,p2"},
 	{"exitgame", "p3"},
 	{"stbshoot", "p2"},
+	{"dojump", "p2"},
 	{"tst", "s8"},
 	{"", ""}
 };
@@ -150,6 +152,7 @@ static int getDarkPixelCnt(Display *lcd) {
 #define BA_RECHECKFOOD 3
 #define BA_RECHECKLESSHUNGRY 4
 #define BA_STB 5
+#define BA_JUMP 6
 
 int baTimeMs;
 int baState=BA_IDLE;
@@ -159,12 +162,14 @@ int oldHunger;
 int oldHappy;
 
 void benevolentAiDump() {
+	char *bastates[]={"idle", "checkfood", "feed", "recheckfood", "rechecklesshungry", "shootthebug", "jump"};
 	printf("Current macro: ");
 	if (state==ST_IDLE) {
 		printf("None.\n");
 	} else {
 		printf("%s, at cmd %c arg %d\n", macros[curMacro].name, cmd, arg);
 	}
+	printf("Benevolent AI state: %s\n", bastates[baState]);
 }
 
 
@@ -184,7 +189,8 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 		} else if (lcdmatchMovable(lcd, screen_sleep1, -16, 2) || lcdmatchMovable(lcd, screen_sleep2, -2, 2)) {
 			benevolentAiMacroRun("lightoff");
 			baTimeMs=0;
-		} else if (lcdmatchMovable(lcd, screen_dark1, -16, 2) || lcdmatchMovable(lcd, screen_dark2, -2, 2)|| lcdmatchMovable(lcd, screen_dark3, -2, 2)) {
+		} else if (getDarkPixelCnt(lcd)>1000) {
+			//We turned off the light.
 			baTimeMs=0; //Don't wake up to check info
 		} else if (lcdmatch(lcd, screen_alert)){
 			benevolentAiMacroRun("train");
@@ -194,9 +200,9 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 			baState=BA_CHECKFOOD;
 		} else {
 			i=getDarkPixelCnt(lcd);
-			if (i<(oldPxCnt-5) || i>(oldPxCnt+5)) {
+			if (i<(oldPxCnt-10) || i>(oldPxCnt+10)) {
 				printf("Pix cnt %d, was %d\n", i, oldPxCnt);
-				oldPxCnt=i;
+				oldPxCnt=(i+oldPxCnt)/2;
 				return 8;
 			}
 		}
@@ -210,12 +216,19 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 			benevolentAiMacroRun("feedmeal");
 			baState=BA_RECHECKFOOD;
 		} else if (happy<4) {
-			benevolentAiMacroRun("feedsnack");
-			baState=BA_RECHECKFOOD;
+			i=rand()%3;
+			if (i==0) {
+				benevolentAiMacroRun("feedsnack");
+				baState=BA_RECHECKFOOD;
+			} else if (i==1) {
+				baState=BA_STB;
+				benevolentAiMacroRun("playstb");
+			} else if (i==2) {
+				baState=BA_JUMP;
+				benevolentAiMacroRun("playjump");
+			}
 		} else {
 			baState=BA_IDLE;
-			baState=BA_STB;
-			benevolentAiMacroRun("playstb");
 		}
 	} else if (baState==BA_RECHECKFOOD) {
 		benevolentAiMacroRun("updvars");
@@ -232,6 +245,13 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 	} else if (baState==BA_STB) {
 		if (lcdmatchMovable(lcd, screen_stb1,-25,0) || lcdmatchMovable(lcd, screen_stb2,-25,0)|| lcdmatchMovable(lcd, screen_stb3,-25,0) || lcdmatchMovable(lcd, screen_stb4,-25,0)) {
 			benevolentAiMacroRun("stbshoot");
+		} else if (lcdmatch(lcd, screen_gameend)) {
+			benevolentAiMacroRun("exitgame");
+			baState=BA_IDLE;
+		}
+	} else if (baState==BA_JUMP) {
+		if (lcdmatch(lcd, screen_jump1) || lcdmatch(lcd, screen_jump2)) {
+			benevolentAiMacroRun("dojump");
 		} else if (lcdmatch(lcd, screen_gameend)) {
 			benevolentAiMacroRun("exitgame");
 			baState=BA_IDLE;
