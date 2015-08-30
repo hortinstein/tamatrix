@@ -3,6 +3,7 @@
 #include <string.h>
 #include "tamaemu.h"
 #include "i2c.h"
+#include "ir.h"
 
 int PAGECT=20;
 
@@ -92,7 +93,7 @@ void tamaClkRecalc(Tamagotchi *t) {
 	const int t0diva[]={0, 1, FCPU/32767, 1, 0, 0, 0, 0};
 	const int t0divb[]={0, 0, 0, 0, FCPU/2, FCPU/8, FCPU/32, FCPU/64};
 //	const int t1div[]={0, 1, FCPU/32768, 0};
-	const int t1div[]={0, 1, 4, 0}; //HACK! Real table seems to increase T1 too slowly.
+	const int t1div[]={0, 1, 1, 0}; //HACK! Real table seems to increase T1 too slowly.
 	const int ccdiv[]={2, 4, 8, 16, 32, 64, 128, 0};
 
 	clk->tblDiv=tbldiv[((REG(R_TIMBASE)>>2)&3)];
@@ -146,7 +147,7 @@ void tamaPressBtn(Tamagotchi *t, int btn) {
 static char implemented[]={
 //	0 1 2 3 4 5 6 7 8 9 A B C D E F
 	1,1,0,0,1,0,3,1,1,0,0,0,0,0,0,0, //00
-	1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0, //10
+	0,1,0,0,0,0,1,0,0,1,0,0,0,0,0,0, //10
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, //20
 	1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0, //30
 	0,0,0,0,0,0,0,0,0,1,3,0,0,0,0,0, //40
@@ -197,6 +198,7 @@ uint8_t ioRead(M6502 *cpu, register word addr) {
 		}
 		return t->ioreg[addr-0x3000];
 	}
+	return 0; //unimplemented
 }
 
 void ioWrite(M6502 *cpu, register word addr, register byte val) {
@@ -210,13 +212,15 @@ void ioWrite(M6502 *cpu, register word addr, register byte val) {
 			hw->bankSel=val;
 		}
 	} else if (addr==R_PADATA) {
-//		printf("PortA: %x\n", val);
+//		fprintf(stderr, "PortA: %02x\n", val);
 	} else if (addr==R_PBDATA) {
-//		printf("PortB: %x\n", val);
+//		fprintf(stderr, "PortB: %02x\n", val);
+		//3 - B on send?. B - LED active, 3 - led non-active?
+		irActive(val&0x8);
 		hw->portBdata&=~1;
 		if (i2cHandle(t->i2cbus, val&2, val&1) && (val&1)) hw->portBdata|=1;
 	} else if (addr==R_PCDATA) {
-//		printf("PortC: %x\n", val);
+//		fprintf(stderr, "PortC: %02x\n", val);
 	} else if (addr==R_INTCLRLO) {
 		int msk=0xffff^(val);
 		hw->iflags&=msk;
@@ -289,6 +293,7 @@ int tamaHwTick(Tamagotchi *t, int gran) {
 		if (((REG(R_TIMCTL)>>2)&7)==1) t0Tick++;
 		tamaWakeSrc(t, (1<<1));
 	}
+
 	while (clk->tbhCtr>=clk->tbhDiv) {
 		clk->tbhCtr-=clk->tbhDiv;
 		hw->iflags|=(1<<11);
@@ -371,6 +376,10 @@ int tamaHwTick(Tamagotchi *t, int gran) {
 			Int6502(R, INT_NMI, 0);
 		}
 	}
+
+	//Do IR ticks
+	irTick(gran);
+
 
 	//Handle stupid hackish button release...
 	if (t->btnReleaseTm!=0) {

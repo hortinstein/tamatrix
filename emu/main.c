@@ -54,6 +54,7 @@ int main(int argc, char **argv) {
 	rom=loadRoms();
 	tama=tamaInit(rom);
 	benevolentAiInit();
+	udpInit("127.0.0.1");
 	while(1) {
 		clock_gettime(CLOCK_MONOTONIC, &tstart);
 		tamaRun(tama, FCPU/FPS-1);
@@ -61,6 +62,7 @@ int main(int argc, char **argv) {
 		k=benevolentAiRun(&display, 1000/FPS);
 		if (!speedup || (t&15)==0) {
 			lcdShow(&display);
+			udpSendDisplay(&display);
 			tamaDumpHw(tama->cpu);
 			benevolentAiDump();
 		}
