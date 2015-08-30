@@ -1,6 +1,8 @@
 **/*.o
 **/*.a
 **/*.gcda
+*.eep
+*.LCD
 tamaemu
 screens.c
 imgmatch/compress
