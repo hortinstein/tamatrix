@@ -157,6 +157,7 @@ static int getDarkPixelCnt(Display *lcd) {
 int baTimeMs;
 int baState=BA_IDLE;
 int oldPxCnt;
+int timeout=0;
 
 int oldHunger;
 int oldHappy;
@@ -178,6 +179,14 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 	int r=macroRun(lcd, mspassed);
 	if (r!=-1) return r;
 	baTimeMs+=mspassed;
+
+	if (timeout!=0) {
+		timeout-=mspassed;
+		if (timeout<=0) {
+			timeout=0;
+			baState=BA_IDLE;
+		}
+	}
 
 	if (baState==BA_IDLE) {
 		if (lcdmatch(lcd, screen_poopie1) || lcdmatch(lcd, screen_poopie2)|| lcdmatch(lcd, screen_poopie3)) {
@@ -216,6 +225,8 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 			benevolentAiMacroRun("feedmeal");
 			baState=BA_RECHECKFOOD;
 		} else if (happy<4) {
+			//Bug: If Tama is congested, it doesn't want to go anywhere. Putting it into the feedsnack/playstb/...
+			//functions make it do nothing. Timeout will catch this tho'.
 			i=rand()%3;
 			if (i==0) {
 				benevolentAiMacroRun("feedsnack");
@@ -223,9 +234,11 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 			} else if (i==1) {
 				baState=BA_STB;
 				benevolentAiMacroRun("playstb");
+				timeout=1000*20;
 			} else if (i==2) {
 				baState=BA_JUMP;
 				benevolentAiMacroRun("playjump");
+				timeout=1000*20;
 			}
 		} else {
 			baState=BA_IDLE;
@@ -245,6 +258,7 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 	} else if (baState==BA_STB) {
 		if (lcdmatchMovable(lcd, screen_stb1,-25,0) || lcdmatchMovable(lcd, screen_stb2,-25,0)|| lcdmatchMovable(lcd, screen_stb3,-25,0) || lcdmatchMovable(lcd, screen_stb4,-25,0)) {
 			benevolentAiMacroRun("stbshoot");
+			timeout=0;
 		} else if (lcdmatch(lcd, screen_gameend)) {
 			benevolentAiMacroRun("exitgame");
 			baState=BA_IDLE;
@@ -252,6 +266,7 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 	} else if (baState==BA_JUMP) {
 		if (lcdmatch(lcd, screen_jump1) || lcdmatch(lcd, screen_jump2)) {
 			benevolentAiMacroRun("dojump");
+			timeout=0;
 		} else if (lcdmatch(lcd, screen_gameend)) {
 			benevolentAiMacroRun("exitgame");
 			baState=BA_IDLE;
