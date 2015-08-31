@@ -162,8 +162,7 @@ typedef struct {
 
 unsigned char **loadRoms();
 void freeRoms(unsigned char **roms);
-
-Tamagotchi *tamaInit(unsigned char **rom);
+Tamagotchi *tamaInit(unsigned char **rom, char *eepromFile);
 void tamaRun(Tamagotchi *tama, int cycles);
 void tamaToggleBkunk(Tamagotchi *t);
 void tamaPressBtn(Tamagotchi*t, int btn);

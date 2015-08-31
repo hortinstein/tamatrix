@@ -2,11 +2,12 @@
 #include <time.h>
 #include "stdio.h"
 #include "tamaemu.h"
+#include "udp.h"
 #include <signal.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/select.h>
-
+#include <string.h>
 
 #include "lcd.h"
 #include "benevolentai.h"
@@ -44,17 +45,42 @@ int getKey() {
 int main(int argc, char **argv) {
 	unsigned char **rom;
 	long us;
-	int k;
+	int k, i;
 	int speedup=0;
 	int stopDisplay=0;
 	int t=0;
+	char *eeprom="tama.eep";
+	char *host="127.0.0.1";
 	struct timespec tstart, tend;
 	Display display;
+	int err=0;
+
+	for (i=1; i<argc; i++) {
+		if (strcmp(argv[i],"-h")==0 && argc>i+1) {
+			i++;
+			host=argv[i];
+		} else if (strcmp(argv[i],"-e")==0 && argc>i+1) {
+			i++;
+			eeprom=argv[i];
+		} else {
+			printf("Unrecognized option - %s\n", argv[i]);
+			err=1;
+			break;
+		}
+	}
+
+	if (err) {
+		printf("Usage: %s [options]\n", argv[0]);
+		printf("-h host - change tamaserver host address (def 127.0.0.1)\n");
+		printf("-e eeprom.eep - change eeprom file (def tama.eep)\n");
+		exit(0);
+	}
+
 	signal(SIGINT, sigintHdlr);
 	rom=loadRoms();
-	tama=tamaInit(rom);
+	tama=tamaInit(rom, eeprom);
 	benevolentAiInit();
-	udpInit("127.0.0.1");
+	udpInit(host);
 	while(1) {
 		clock_gettime(CLOCK_MONOTONIC, &tstart);
 		tamaRun(tama, FCPU/FPS-1);
@@ -67,6 +93,7 @@ int main(int argc, char **argv) {
 			benevolentAiDump();
 		}
 		if ((k&8)) {
+			//If anything interesting happens, make a LCD dump.
 			lcdDump(tama->dram, tama->lcd.sizex, tama->lcd.sizey, "lcddump.lcd");
 			if (stopDisplay) {
 				tama->cpu->Trace=1;

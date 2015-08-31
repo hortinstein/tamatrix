@@ -70,8 +70,8 @@ unsigned char **loadRoms() {
 		fseek(f, 16*1024, SEEK_SET);
 		roms[i]=malloc(32*1024);
 		l=fread(roms[i], 1, 32768, f);
-		printf("%s - %d bytes\n", fname, l);
-		printf("%x %x\n", roms[i][0x3ffc], roms[i][0x3ffd]);
+		printf("ROM loaded: %s - %d bytes\n", fname, l);
+//		printf("%x %x\n", roms[i][0x3ffc], roms[i][0x3ffd]);
 		fclose(f);
 	}
 	return roms;
@@ -442,14 +442,14 @@ byte Loop6502(register M6502 *R) {
 	return 0;
 }
 
-Tamagotchi *tamaInit(unsigned char **rom) {
+Tamagotchi *tamaInit(unsigned char **rom, char *eepromFile) {
 	Tamagotchi *tama=malloc(sizeof(Tamagotchi));
 	memset(tama, 0, sizeof(Tamagotchi));
 	tama->cpu=malloc(sizeof(M6502));
 	memset(tama->cpu, 0, sizeof(M6502));
 	tama->rom=rom;
 	tama->i2cbus=i2cInit();
-	tama->i2ceeprom=i2ceepromInit("tama.eep");
+	tama->i2ceeprom=i2ceepromInit(eepromFile);
 	i2cAddDev(tama->i2cbus, &tama->i2ceeprom->i2cdev, 0xA0);
 	tama->cpu->Rd6502=tamaReadCb;
 	tama->cpu->Wr6502=tamaWriteCb;
