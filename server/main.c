@@ -9,19 +9,21 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/shm.h>
 
 #include "../emu/udpproto.h"
 
 #define MAXCLIENT 128
 
-typedef struct {
+typedef struct __attribute((packed)) {
 	uint32_t lastSeq; //-1 if not in use, seq otherwise
 	uint8_t display[32*48];
 	uint16_t icons;
 } TamaDisp;
 
 
-typedef struct {
+typedef struct __attribute((packed)) {
 	uint32_t currSeq;
 	uint32_t noTamas;
 	TamaDisp tama[MAXCLIENT];
@@ -34,9 +36,10 @@ int sock;
 void handleTamaPacket(int id, TamaUdpData *d, int len) {
 	int x, y, p;
 	if (d->type==TAMAUDP_IMAGE) {
+//		printf("Image for tama id %d\n", id);
 		p=0;
-		for (x=0; x<48; x++) {
-			for (y=0; y<48; y++) {
+		for (y=0; y<32; y++) {
+			for (x=0; x<48; x++) {
 				shm->tama[id].display[p++]=d->d.disp.pixel[y][x];
 			}
 		}
@@ -55,14 +58,13 @@ int main(int argc, char** argv) {
 	TamaUdpData pkt;
 	struct sockaddr_in claddr, serveraddr;
 	
-	shmfd=shm_open("/tamahive", O_RDWR|O_TRUNC|O_CREAT, 0666);
+	shmfd=shmget(7531, sizeof(ShmData), IPC_CREAT|0666);
 	if (shmfd<0) {
 		perror("creating shm");
 		exit(1);
 	}
-	ftruncate(shmfd, sizeof(ShmData));
-	shm=mmap(NULL, sizeof(ShmData), PROT_READ|PROT_WRITE, MAP_SHARED, shmfd, 0);
-	if (shm==NULL) {
+	shm=shmat(shmfd, NULL, 0);
+	if (shm==(void*)-1) {
 		perror("mmapping shm");
 		exit(1);
 	}
@@ -107,7 +109,7 @@ int main(int argc, char** argv) {
 				if (shm->tama[i].lastSeq==-1) break;
 			}
 			//If this expands the noTamas, change that number.
-			if (i>shm->noTamas && i<MAXCLIENT) shm->noTamas=i;
+			if (i>=shm->noTamas && i<MAXCLIENT) shm->noTamas=i+1;
 			if (i<MAXCLIENT) {
 				//Okay, init tama struct.
 				memcpy(&clientaddr[i], &claddr, al);
