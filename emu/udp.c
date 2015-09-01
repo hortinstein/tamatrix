@@ -10,6 +10,8 @@
 
 static int sock;
 static struct sockaddr_in servaddr;
+static char olddisp[32][48];
+
 
 void udpInit(char *hostname) {
 //	struct sockaddr_in cliaddr;
@@ -29,11 +31,22 @@ void udpInit(char *hostname) {
 
 void udpSendDisplay(Display *d) {
 	int x, y;
+	int chg=0;
+	//Compare first, don't send udp packet if no change has occurred.
+	for (y=0; y<32; y++) {
+		if (memcmp(olddisp[y], d->p[y], 48)!=0) {
+			chg=1;
+			break;
+		}
+	}
+	if (!chg) return;
+
 	TamaUdpData packet;
 	packet.type=TAMAUDP_IMAGE;
 	for (y=0; y<32; y++) {
 		for (x=0; x<48; x++) {
 			packet.d.disp.pixel[y][x]=d->p[y][x];
+			olddisp[y][x]=d->p[y][x];
 		}
 	}
 	packet.d.disp.icons=htons(d->icons);

@@ -1,11 +1,19 @@
 
 var lastseq=0;
+var tamaCanvas=Array();
 
 
 function drawTama(id, tama) {
 	var ctx;
-	if (id==0) ctx=$("tamalcd1").getContext("2d");
-	if (id==1) ctx=$("tamalcd2").getContext("2d");
+	if (tamaCanvas.length<=id) {
+		var c=new Element('canvas', {
+			'height': 320,
+			'width': 480
+		});
+		c.inject($("tamas"));
+		tamaCanvas[id]=c;
+	}
+	ctx=tamaCanvas[id].getContext("2d");
 	ctx.fillStyle="#efffe0";
 	ctx.fillRect(0,0,480,320);
 	var p=0;
