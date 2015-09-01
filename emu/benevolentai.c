@@ -21,6 +21,7 @@ int state=0;
 int hunger=-1;
 int happy=-1;
 int oldIcon=-1;
+int iconAttempts=0;
 
 #define ST_IDLE 0
 #define ST_NEXT 1
@@ -39,7 +40,7 @@ static Macro macros[]={
 	{"lightoff", "p3,w20"},
 	{"playstb", "s4,p2,p2,w90,p2"},
 	{"playjump", "s4,p2,p2,w90,p1,p2"},
-	{"exitgame", "p3"},
+	{"exitgame", "p3,w80"},
 	{"stbshoot", "p2"},
 	{"dojump", "p2"},
 	{"tst", "s8"},
@@ -103,6 +104,7 @@ int macroRun(Display *lcd, int mspassed) {
 				state=ST_ICONSEL;
 				waitTimeMs=0;
 				oldIcon=-1;
+				iconAttempts=0;
 				return 0;
 			} else if (cmd=='m') {
 				//Assume we're on the hunger/happy screen; we can now measure the amount of heart filled.
@@ -117,6 +119,8 @@ int macroRun(Display *lcd, int mspassed) {
 			}
 		}
 	} else if (state==ST_ICONSEL) {
+		iconAttempts++;
+		if (iconAttempts=15) state=ST_NEXT; //Bail out.
 		if (lcd->icons&(1<<(arg-1))) {
 			state=ST_NEXT;
 		} else {
@@ -261,7 +265,7 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 			timeout=0;
 		} else if (lcdmatch(lcd, screen_gameend)) {
 			benevolentAiMacroRun("exitgame");
-			baState=BA_IDLE;
+			baState=BA_RECHECKLESSHUNGRY;
 		}
 	} else if (baState==BA_JUMP) {
 		if (lcdmatch(lcd, screen_jump1) || lcdmatch(lcd, screen_jump2)) {
@@ -269,7 +273,7 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 			timeout=0;
 		} else if (lcdmatch(lcd, screen_gameend)) {
 			benevolentAiMacroRun("exitgame");
-			baState=BA_IDLE;
+			baState=BA_RECHECKLESSHUNGRY;
 		}
 	}
 	return 0;
