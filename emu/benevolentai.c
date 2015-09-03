@@ -40,7 +40,7 @@ static Macro macros[]={
 	{"lightoff", "p3,w20"},
 	{"playstb", "s4,p2,p2,w90,p2"},
 	{"playjump", "s4,p2,p2,w90,p1,p2"},
-	{"exitgame", "p3,w80"},
+	{"exitgame", "p3,w90"},
 	{"stbshoot", "p2"},
 	{"dojump", "p2"},
 	{"tst", "s8"},
@@ -268,7 +268,7 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 			timeout=0;
 		} else if (lcdmatch(lcd, screen_gameend)) {
 			benevolentAiMacroRun("exitgame");
-			baState=BA_RECHECKLESSHUNGRY;
+			baState=BA_RECHECKFOOD;
 		}
 	} else if (baState==BA_JUMP) {
 		if (lcdmatch(lcd, screen_jump1) || lcdmatch(lcd, screen_jump2)) {
@@ -276,7 +276,7 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 			timeout=0;
 		} else if (lcdmatch(lcd, screen_gameend)) {
 			benevolentAiMacroRun("exitgame");
-			baState=BA_RECHECKLESSHUNGRY;
+			baState=BA_RECHECKFOOD;
 		}
 	}
 	return 0;
