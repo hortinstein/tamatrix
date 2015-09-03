@@ -123,7 +123,7 @@ int macroRun(Display *lcd, int mspassed) {
 		}
 	} else if (state==ST_ICONSEL) {
 		iconAttempts++;
-		if (iconAttempts=15) state=ST_NEXT; //Bail out.
+		if (iconAttempts==15) state=ST_NEXT; //Bail out.
 		if (lcd->icons&(1<<(arg-1))) {
 			state=ST_NEXT;
 		} else {
@@ -131,7 +131,7 @@ int macroRun(Display *lcd, int mspassed) {
 			if (oldIcon==lcd->icons) {
 				//Icon didn't change. Maybe press 'back'?
 				oldIcon=-1;
-				return (1<<3);
+				return (1<<2);
 			} else {
 				//Not there yet. Select next icon.
 				return (1<<0);
