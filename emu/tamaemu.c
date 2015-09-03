@@ -133,6 +133,7 @@ void tamaToggleBtn(Tamagotchi *t, int btn) {
 	tamaWakeSrc(t, (1<<0));
 }
 
+//0, 1, 2
 void tamaPressBtn(Tamagotchi *t, int btn) {
 	if (t->btnReleaseTm!=0) return;
 	tamaToggleBtn(t, btn);
@@ -164,6 +165,7 @@ static char implemented[]={
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, //F0
 	};
 
+
 uint8_t ioRead(M6502 *cpu, register word addr) {
 	Tamagotchi *t=(Tamagotchi *)cpu->User;
 	TamaHw *hw=&t->hw;
@@ -175,6 +177,7 @@ uint8_t ioRead(M6502 *cpu, register word addr) {
 	} else if (addr==R_PBDATA) {
 		return hw->portBdata;
 	} else if (addr==R_PCDATA) {
+		cpu->Trace=1;
 		return hw->portCdata;
 	} else if (addr==R_INTCTLLO) {
 		return hw->iflags&0xff;
@@ -378,8 +381,7 @@ int tamaHwTick(Tamagotchi *t, int gran) {
 	}
 
 	//Do IR ticks
-	irTick(gran);
-
+	if (irTick(gran)) t->hw.portAdata&=~0xF0; else t->hw.portAdata|=0xF0;
 
 	//Handle stupid hackish button release...
 	if (t->btnReleaseTm!=0) {
@@ -455,8 +457,8 @@ Tamagotchi *tamaInit(unsigned char **rom, char *eepromFile) {
 	tama->cpu->Wr6502=tamaWriteCb;
 	tama->cpu->User=(void*)tama;
 	tama->hw.bankSel=0;
-	tama->hw.portAdata=0xf; //4-batlo 3-but2 2-but1 1-but0
-	tama->hw.portBdata=0xfe;
+	tama->hw.portAdata=0xf; //3-batlo 2-but2 1-but1 0-but0
+	tama->hw.portBdata=0xfe;	//0, 1: I2C; 3: IR send
 	tama->hw.portCdata=0xff;
 	Reset6502(tama->cpu);
 	tama->ioreg[R_CLKCTL-0x3000]=0x2; //Fosc/8 is default

@@ -7,6 +7,13 @@
 #include <netdb.h>
 #include "udp.h"
 #include "udpproto.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#include "ir.h"
 
 static int sock;
 static struct sockaddr_in servaddr;
@@ -27,6 +34,28 @@ void udpInit(char *hostname) {
 	servaddr.sin_family = AF_INET;
 	bcopy((char *)server->h_addr, (char *)&servaddr.sin_addr.s_addr, server->h_length);
 	servaddr.sin_port=htons(7531);
+}
+
+
+int udpTick() {
+	TamaUdpData packet;
+	fd_set rfds;
+	struct timeval tv;
+	int r, ret=0;
+	FD_ZERO(&rfds);
+	FD_SET(sock, &rfds);
+	tv.tv_sec=0;
+	tv.tv_usec=0;
+	r=select(sock+1, &rfds, NULL, NULL, &tv);
+	if (r==1) {
+		read(sock, &packet, sizeof(TamaUdpData));
+		if (packet.type==TAMAUDP_IRSTART) {
+			ret=1;
+		} else if (packet.type==TAMAUDP_IRDATA) {
+			irRecv(packet.d.ir.data, ntohs(packet.d.ir.dataLen));
+		}
+	}
+	return ret;
 }
 
 void udpSendDisplay(Display *d) {
@@ -52,3 +81,12 @@ void udpSendDisplay(Display *d) {
 	packet.d.disp.icons=htons(d->icons);
 	sendto(sock, &packet, sizeof(packet), 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
 }
+
+void udpSendIr(char *data, int len) {
+	TamaUdpData packet;
+	packet.type=TAMAUDP_IRDATA;
+	memcpy(packet.d.ir.data, data, len);
+	packet.d.ir.dataLen=htons(len);
+	sendto(sock, &packet, sizeof(packet), 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
+}
+

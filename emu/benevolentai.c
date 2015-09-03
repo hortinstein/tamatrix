@@ -48,6 +48,9 @@ static Macro macros[]={
 };
 
 
+void benevolentAiReqIrComm() {
+
+}
 
 int benevolentAiMacroRun(char *name) {
 	int i=0;

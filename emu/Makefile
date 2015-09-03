@@ -1,7 +1,15 @@
-LDFLAGS := -lgcc -fprofile-generate
-CFLAGS := -ggdb -Wall -O2 -fprofile-generate
+LDFLAGS := -lgcc
+CFLAGS := -ggdb -Wall -O2 -march=native
 OBJS := main.o tamaemu.o i2c.o i2ceeprom.o lcd.o benevolentai.o lcdmatch.o screens.o \
 		ir.o udp.o
+
+ifeq ("$(PROF)","use")
+LDFLAGS+= -fprofile-use
+CFLAGS+= -fprofile-use
+else
+LDFLAGS+= -fprofile-generate
+CFLAGS+= -fprofile-generate
+endif
 
 all: tamaemu
 

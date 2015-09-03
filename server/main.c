@@ -29,7 +29,12 @@ typedef struct __attribute((packed)) {
 	TamaDisp tama[MAXCLIENT];
 } ShmData;
 
-struct sockaddr_in clientaddr[MAXCLIENT];
+typedef struct {
+	struct sockaddr_in addr;
+	int connectedTo;
+} Client;
+
+Client client[MAXCLIENT];
 volatile ShmData *shm;
 int sock;
 
@@ -44,6 +49,17 @@ void handleTamaPacket(int id, TamaUdpData *d, int len) {
 			}
 		}
 		shm->tama[id].icons=d->d.disp.icons;
+	} else if (d->type==TAMAUDP_IRSTART) {
+		//HACK
+		client[0].connectedTo=1;
+		client[1].connectedTo=0;
+	} else if (d->type==TAMAUDP_IRDATA) {
+		//Forward packet to connected tama
+		y=client[id].connectedTo;
+		sendto(sock, d, len, 0, (struct sockaddr *)&client[y].addr, sizeof(struct sockaddr_in));
+		printf("IR data from %d to %d len %d:", id, y, ntohs(d->d.ir.dataLen));
+		for (x=0; x<ntohs(d->d.ir.dataLen); x++) printf("%02X ", d->d.ir.data[x]);
+		printf("\n");
 	}
 	p=shm->currSeq+1;
 	shm->tama[id].lastSeq=p;
@@ -92,12 +108,15 @@ int main(int argc, char** argv) {
 		shm->tama[i].lastSeq=-1;
 	}
 
+		client[0].connectedTo=1;
+		client[1].connectedTo=0;
+
 	while(1) {
 		al=sizeof(claddr);
 		l=recvfrom(sock, &pkt, sizeof(pkt), 0, (struct sockaddr *) &claddr, &al);
 		t=-1;
 		for (i=0; i<MAXCLIENT; i++) {
-			if (shm->tama[i].lastSeq!=-1 && memcmp(&claddr, &clientaddr[i], al)==0) {
+			if (shm->tama[i].lastSeq!=-1 && memcmp(&claddr, &client[i].addr, al)==0) {
 				t=i;
 				break;
 			}
@@ -112,7 +131,7 @@ int main(int argc, char** argv) {
 			if (i>=shm->noTamas && i<MAXCLIENT) shm->noTamas=i+1;
 			if (i<MAXCLIENT) {
 				//Okay, init tama struct.
-				memcpy(&clientaddr[i], &claddr, al);
+				memcpy(&client[i].addr, &claddr, al);
 				shm->tama[i].lastSeq=0;
 				t=i;
 				printf("New connection id=%d\n", t);
