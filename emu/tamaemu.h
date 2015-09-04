@@ -129,6 +129,9 @@ typedef struct {
 	uint8_t portAdata;
 	uint8_t portBdata;
 	uint8_t portCdata;
+	uint8_t portAout;
+	uint8_t portBout;
+	uint8_t portCout;
 	int32_t ticks;
 	int16_t iflags;
 	int8_t nmiflags;
@@ -157,6 +160,7 @@ typedef struct {
 	int btnPressed;
 	int btnReleaseTm;
 	int btnReads;
+	int irnx;
 } Tamagotchi;
 
 

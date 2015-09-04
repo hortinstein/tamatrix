@@ -9,6 +9,13 @@ int PAGECT=20;
 
 #define REG(x) t->ioreg[(x)-0x3000]
 
+static void tamaDumpBin(int val, int bits) {
+	int x;
+	for (x=bits-1; x>=0; --x) {
+		printf("%d", (val&(1<<x))?1:0);
+	}
+}
+
 
 void tamaDumpHw(M6502 *cpu) {
 	const char *intfdesc[]={"FP", "SPI", "SPU", "FOSC/8K", "FOSC/2K", "x", "x", "TM0", 
@@ -52,6 +59,13 @@ void tamaDumpHw(M6502 *cpu) {
 		clk->tblCtr, clk->tblDiv, clk->tbhCtr, clk->tbhDiv, clk->c8kCtr, clk->c2kCtr, clk->t0Ctr, clk->t0Div, clk->t1Ctr, clk->t1Div, clk->cpuCtr, clk->cpuDiv);
 	printf("Btn port reads since last press: %d\n", t->btnReads);
 	printf("Current bank: %d\n", hw->bankSel);
+	printf("Output bits: A:");
+	tamaDumpBin(hw->portAout, 8);
+	printf(" B:");
+	tamaDumpBin(hw->portBout, 8);
+	printf(" C:");
+	tamaDumpBin(hw->portCout, 8);
+	printf("\n");
 }
 
 unsigned char **loadRoms() {
@@ -177,7 +191,7 @@ uint8_t ioRead(M6502 *cpu, register word addr) {
 	} else if (addr==R_PBDATA) {
 		return hw->portBdata;
 	} else if (addr==R_PCDATA) {
-		cpu->Trace=1;
+//		cpu->Trace=1;
 		return hw->portCdata;
 	} else if (addr==R_INTCTLLO) {
 		return hw->iflags&0xff;
@@ -207,6 +221,7 @@ uint8_t ioRead(M6502 *cpu, register word addr) {
 void ioWrite(M6502 *cpu, register word addr, register byte val) {
 	Tamagotchi *t=(Tamagotchi *)cpu->User;
 	TamaHw *hw=&t->hw;
+
 	if (addr==R_BANK) {
 		if (val>20) {
 			printf("Unimplemented bank: 0x%02X\n", val);
@@ -215,15 +230,26 @@ void ioWrite(M6502 *cpu, register word addr, register byte val) {
 			hw->bankSel=val;
 		}
 	} else if (addr==R_PADATA) {
-//		fprintf(stderr, "PortA: %02x\n", val);
+		//0 - Button 1
+		//1 - Button 2
+		//2 - Button 3
+		//3 - LV detect
+		hw->portAout=val;
+		//4-7 - SPI for Tamago
 	} else if (addr==R_PBDATA) {
-//		fprintf(stderr, "PortB: %02x\n", val);
-		//3 - B on send?. B - LED active, 3 - led non-active?
+		hw->portBout=val;
+		//Port B:
+		//0 - I2C SDA
+		//1 - I2C SCL
+		//2 - IR enable?
+		//3 - IR LED
+		//4-7 - SPI for Tamago
 		irActive(val&0x8);
 		hw->portBdata&=~1;
 		if (i2cHandle(t->i2cbus, val&2, val&1) && (val&1)) hw->portBdata|=1;
 	} else if (addr==R_PCDATA) {
-//		fprintf(stderr, "PortC: %02x\n", val);
+		//Probably unused.
+		hw->portCout=val;
 	} else if (addr==R_INTCLRLO) {
 		int msk=0xffff^(val);
 		hw->iflags&=msk;
@@ -280,6 +306,15 @@ int tamaHwTick(Tamagotchi *t, int gran) {
 	int t0Tick=0, t1Tick=0;
 	int nmiTrigger=0;
 	int ien;
+
+	//Do IR ticks
+	if (irTick(gran, &t->irnx)) t->hw.portAdata&=~0xF0; else t->hw.portAdata|=0xF0;
+	if (t->irnx!=0) {
+		t->irnx-=gran;
+		if (t->irnx<0) t->irnx=0;
+		return gran;
+	}
+
 
 	clk->tblCtr+=gran;
 	clk->tbhCtr+=gran;
@@ -380,9 +415,6 @@ int tamaHwTick(Tamagotchi *t, int gran) {
 		}
 	}
 
-	//Do IR ticks
-	if (irTick(gran)) t->hw.portAdata&=~0xF0; else t->hw.portAdata|=0xF0;
-
 	//Handle stupid hackish button release...
 	if (t->btnReleaseTm!=0) {
 		t->btnReleaseTm-=gran;
@@ -462,6 +494,7 @@ Tamagotchi *tamaInit(unsigned char **rom, char *eepromFile) {
 	tama->hw.portCdata=0xff;
 	Reset6502(tama->cpu);
 	tama->ioreg[R_CLKCTL-0x3000]=0x2; //Fosc/8 is default
+	tama->irnx=0;
 	tamaClkRecalc(tama);
 	return tama;
 }

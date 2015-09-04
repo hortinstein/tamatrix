@@ -16,12 +16,14 @@ static char sendData[32];
 static int sendPos=-2, sendLen, sendTick;
 
 static char recvData[32];
-static int recvPos=0;
+static int recvPos=-1;
+static int totalTicks;
 
 #define IRTICK_MAX ((16000000/38000))
 
 void irRecv(char *data, int len) {
 	if (len>32) return;
+	fprintf(stderr, "Got IR data from UDP, len=%d. Curr: sendPos=%d\n", len, sendPos);
 	memcpy(sendData, data, len);
 	sendLen=len;
 	sendPos=-1; 
@@ -42,9 +44,10 @@ void irActive(int isOn) {
 #define TICKS_SENDLOONE		24
 #define TICKS_START_HI		190
 #define TICKS_START_LO		42
+#define TICKS_END_HI		24
 
 //This is called every 2048 clock cycles and returns the output of the IR receiver
-int irTick(int noticks) {
+int irTick(int noticks, int *irNX) {
 	int b;
 	currClkTick+=noticks;
 	if (currClkTick<IRTICK_MAX) return recvActive;
@@ -63,7 +66,11 @@ int irTick(int noticks) {
 				sendTick=0;
 			}
 		} else {
-			if (sendTick==TICKS_SENDHI) recvActive=0;
+			if (sendPos!=(sendLen*8)) {
+				if (sendTick==TICKS_SENDHI) recvActive=0;
+			} else {
+				if (sendTick==TICKS_END_HI) recvActive=0;
+			}
 			b=sendData[sendPos/8]&(1<<(sendPos&7));
 			if ((b && (sendTick==(TICKS_SENDHI+TICKS_SENDLOONE))) || ((!b) && (sendTick==(TICKS_SENDHI+TICKS_SENDLOZERO)))) {
 				sendTick=0;
@@ -80,16 +87,21 @@ int irTick(int noticks) {
 		}
 	}
 
-	
+//	seenLight=recvActive; //HACK
 	if (oldLight!=seenLight) {
 		if (oldLight==1) {
+			// IR goes high->low
 			hiTime=ticks;
 		} else {
-//			fprintf(stderr, "Hi %02d lo %02d (%d)\n", hiTime, ticks, (ticks>TICKS_LO_ZERO)?1:0);
+			// IR goes low->hi
+			fprintf(stderr, "Hi %02d lo %02d (%d) bit %d byte %d\n", hiTime, ticks, (ticks>TICKS_LO_ZERO)?1:0,
+					bit, recvPos);
 			if (hiTime>TICKS_HI_IDLE) {
 				bit=0; val=0;
+				recvPos=0;
+				totalTicks=hiTime;
 //				fprintf(stderr, "IR: start\n");
-			} else {
+			} else if (recvPos!=-1) {
 				val>>=1;
 				if (ticks>TICKS_LO_ZERO) val|=0x80;
 				bit++;
@@ -101,14 +113,16 @@ int irTick(int noticks) {
 				}
 			}
 		}
+		totalTicks+=ticks;
 		ticks=0;
 		oldLight=seenLight;
 	}
 	ticks++;
-	if (ticks>TICKS_SENDLOONE*2 && recvPos!=0) {
+	if (ticks>TICKS_SENDLOONE*2 && recvPos>0) {
 //		printf("Sending data over IR: %d bytes, bitpos=%d", recvPos, bit);
 		udpSendIr(recvData, recvPos);
-		recvPos=0;
+		recvPos=-1;
+		*irNX+=(totalTicks*IRTICK_MAX);
 	}
 	seenLight=0;
 	return recvActive;

@@ -269,12 +269,18 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 		} else if (lcdmatch(lcd, screen_gameend)) {
 			benevolentAiMacroRun("exitgame");
 			baState=BA_RECHECKFOOD;
+		} else if (lcdmatch(lcd, screen_doorsel)) {
+			benevolentAiMacroRun("exitgame");
+			baState=BA_RECHECKFOOD;
 		}
 	} else if (baState==BA_JUMP) {
 		if (lcdmatch(lcd, screen_jump1) || lcdmatch(lcd, screen_jump2)) {
 			benevolentAiMacroRun("dojump");
 			timeout=0;
 		} else if (lcdmatch(lcd, screen_gameend)) {
+			benevolentAiMacroRun("exitgame");
+			baState=BA_RECHECKFOOD;
+		} else if (lcdmatch(lcd, screen_doorsel)) {
 			benevolentAiMacroRun("exitgame");
 			baState=BA_RECHECKFOOD;
 		}
