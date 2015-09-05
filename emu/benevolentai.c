@@ -12,16 +12,19 @@ typedef struct {
 } Macro;
 
 
-int curMacro=-1;
-int macroPos=0;
-int waitTimeMs=0;
-int cmd, arg;
-int state=0;
+static int curMacro=-1;
+static int macroPos=0;
+static int waitTimeMs=0;
+static int cmd, arg;
+static int state=0;
 
-int hunger=-1;
-int happy=-1;
-int oldIcon=-1;
-int iconAttempts=0;
+static int hunger=-1;
+static int happy=-1;
+static int oldIcon=-1;
+static int iconAttempts=0;
+
+//implementation re https://xkcd.com/534/
+long thisAlgorithmBecomingSkynetCost=999999999;
 
 #define ST_IDLE 0
 #define ST_NEXT 1
