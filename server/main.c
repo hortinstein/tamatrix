@@ -50,9 +50,18 @@ void handleTamaPacket(int id, TamaUdpData *d, int len) {
 		}
 		shm->tama[id].icons=d->d.disp.icons;
 	} else if (d->type==TAMAUDP_IRSTART) {
-		//HACK
-		client[0].connectedTo=1;
-		client[1].connectedTo=0;
+		//Find a tama to connect this one to.
+		y=100;
+		do {
+			y--;
+			x=rand()%(shm->noTamas);
+		} while (y>0 && (x==id || (shm->currSeq - shm->tama[x].lastSeq)>100) );
+		client[id].connectedTo=x;
+		client[x].connectedTo=id;
+		sendto(sock, d, len, 0, (struct sockaddr *)&client[x].addr, sizeof(struct sockaddr_in));
+	} else if (d->type==TAMAUDP_IRSTARTACK) {
+		y=client[id].connectedTo;
+		sendto(sock, d, len, 0, (struct sockaddr *)&client[x].addr, sizeof(struct sockaddr_in));
 	} else if (d->type==TAMAUDP_IRDATA) {
 		//Forward packet to connected tama
 		y=client[id].connectedTo;
@@ -73,6 +82,7 @@ int main(int argc, char** argv) {
 	int al;
 	TamaUdpData pkt;
 	struct sockaddr_in claddr, serveraddr;
+	srand(time(NULL));
 	
 	shmfd=shmget(7531, sizeof(ShmData), IPC_CREAT|0666);
 	if (shmfd<0) {
