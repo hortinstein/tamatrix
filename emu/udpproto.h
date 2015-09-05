@@ -17,12 +17,18 @@ typedef struct __attribute__((packed)) {
 	uint8_t data[32];
 } TamaIrData;
 
+typedef struct __attribute__((packed)) {
+	uint8_t type;
+} TamaIrStartData;
+
+
 
 typedef struct __attribute__((packed)) {
 	uint8_t type;
 	union {
 		TamaUdpDisplay disp;
 		TamaIrData ir;
+		TamaIrStartData irs;
 	} d;
 } TamaUdpData;
 

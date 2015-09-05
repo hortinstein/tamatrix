@@ -50,7 +50,7 @@ int udpTick() {
 	if (r==1) {
 		read(sock, &packet, sizeof(TamaUdpData));
 		if (packet.type==TAMAUDP_IRSTART) {
-			ret=1;
+			ret=1; //ToDo: pass startType
 		} else if (packet.type==TAMAUDP_IRDATA) {
 			irRecv(packet.d.ir.data, ntohs(packet.d.ir.dataLen));
 		}
