@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include "lcdmatch.h"
 #include "screens.h"
-
+#include "udp.h"
 
 typedef struct {
 	char *name;
@@ -31,6 +31,11 @@ long thisAlgorithmBecomingSkynetCost=999999999;
 #define ST_ICONSEL 2
 
 
+#define TAMAUDP_IRTP_CANCEL	0
+#define TAMAUDP_IRTP_VISIT	1
+#define TAMAUDP_IRTP_GAME	2
+
+
 static Macro macros[]={
 	{"feedmeal", "s2,p2,p2,p2,w90,p3,p3"},
 	{"feedsnack", "s2,p2,p1,p2,p2,w90,p3,p3"},
@@ -46,14 +51,15 @@ static Macro macros[]={
 	{"exitgame", "p3,w90"},
 	{"stbshoot", "p2"},
 	{"dojump", "p2"},
+	{"irgamecl", "s8,p2,p2,p2"},
+	{"irgamema", "s8,p2,p2,p2,p2"},
+	{"irvisitcl", "s8,p2,p2,p1,p2"},
+	{"irvisitma", "s8,p2,p2,p1,p2,p2"},
 	{"tst", "s8"},
 	{"", ""}
 };
 
 
-void benevolentAiReqIrComm() {
-
-}
 
 int benevolentAiMacroRun(char *name) {
 	int i=0;
@@ -163,17 +169,22 @@ static int getDarkPixelCnt(Display *lcd) {
 #define BA_RECHECKLESSHUNGRY 4
 #define BA_STB 5
 #define BA_JUMP 6
+#define BA_IRVISIT 7
+#define BA_IRGAME 8
 
 int baTimeMs;
 int baState=BA_IDLE;
 int oldPxCnt;
 int timeout=0;
+int irReq=0;
+int irMaster=0;
+
 
 int oldHunger;
 int oldHappy;
 
 void benevolentAiDump() {
-	char *bastates[]={"idle", "checkfood", "feed", "recheckfood", "rechecklesshungry", "shootthebug", "jump"};
+	char *bastates[]={"idle", "checkfood", "feed", "recheckfood", "rechecklesshungry", "shootthebug", "jump", "irvisit", "irgame"};
 	printf("Current macro: ");
 	if (state==ST_IDLE) {
 		printf("None.\n");
@@ -181,6 +192,17 @@ void benevolentAiDump() {
 		printf("%s, at cmd %c arg %d\n", macros[curMacro].name, cmd, arg);
 	}
 	printf("Benevolent AI state: %s\n", bastates[baState]);
+}
+
+
+void benevolentAiReqIrComm(int type) {
+	irReq=type;
+	irMaster=0;
+}
+
+void benevolentAiAckIrComm(int type) {
+	irReq=type;
+	irMaster=1;
 }
 
 
@@ -213,11 +235,28 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 			baTimeMs=0; //Don't wake up to check info
 		} else if (lcdmatch(lcd, screen_alert)){
 			benevolentAiMacroRun("train");
-		} else if (baTimeMs>300*1000) {
+		} else if (baTimeMs>120*1000) {
 			//We need to check for health etc
 			baTimeMs=0;
 			baState=BA_CHECKFOOD;
+		} else if (baTimeMs>15*1000) { //hack; ToDo: find better place to do this
+			//Invite other tama for a visit.
+			irReq=TAMAUDP_IRTP_GAME;
+			irMaster=1;
+			udpSendIrstartReq(irReq);
+			baTimeMs=0;
+		} else if (irReq) {
+			//Either we got a request for a visit, or our visit req is ack'ed.
+			if (!irMaster) udpSendIrstartAck(irReq);
+			if (irReq==TAMAUDP_IRTP_GAME) {
+				benevolentAiMacroRun(irMaster?"irgamema":"irgamecl");
+				baState=BA_IRGAME;
+			} else if (irReq==TAMAUDP_IRTP_VISIT) {
+				benevolentAiMacroRun(irMaster?"irvisitma":"irvisitcl");
+				baState=BA_IRVISIT;
+			}
 		} else {
+			//Take a snapshot if much changed.
 			i=getDarkPixelCnt(lcd);
 			if (i<(oldPxCnt-10) || i>(oldPxCnt+10)) {
 				printf("Pix cnt %d, was %d\n", i, oldPxCnt);
@@ -287,6 +326,11 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 			benevolentAiMacroRun("exitgame");
 			baState=BA_RECHECKFOOD;
 		}
+	} else if (baState==BA_IRVISIT) {
+
+
+	} else if (baState==BA_IRGAME) {
+
 	}
 	return 0;
 }

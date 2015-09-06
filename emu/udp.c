@@ -14,6 +14,7 @@
 #include <unistd.h>
 
 #include "ir.h"
+#include "benevolentai.h"
 
 static int sock;
 static struct sockaddr_in servaddr;
@@ -37,11 +38,11 @@ void udpInit(char *hostname) {
 }
 
 
-int udpTick() {
+void udpTick() {
 	TamaUdpData packet;
 	fd_set rfds;
 	struct timeval tv;
-	int r, ret=0;
+	int r;
 	FD_ZERO(&rfds);
 	FD_SET(sock, &rfds);
 	tv.tv_sec=0;
@@ -50,12 +51,27 @@ int udpTick() {
 	if (r==1) {
 		read(sock, &packet, sizeof(TamaUdpData));
 		if (packet.type==TAMAUDP_IRSTART) {
-			ret=1; //ToDo: pass startType
+			benevolentAiReqIrComm(packet.d.irs.type);
+		} else if (packet.type==TAMAUDP_IRSTARTACK) {
+			benevolentAiAckIrComm(packet.d.irs.type);
 		} else if (packet.type==TAMAUDP_IRDATA) {
 			irRecv(packet.d.ir.data, ntohs(packet.d.ir.dataLen));
 		}
 	}
-	return ret;
+}
+
+void udpSendIrstartReq(int type) {
+	TamaUdpData packet;
+	packet.type=TAMAUDP_IRSTART;
+	packet.d.irs.type=type;
+	sendto(sock, &packet, sizeof(packet), 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
+}
+
+void udpSendIrstartAck(int type) {
+	TamaUdpData packet;
+	packet.type=TAMAUDP_IRSTARTACK;
+	packet.d.irs.type=type;
+	sendto(sock, &packet, sizeof(packet), 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
 }
 
 void udpSendDisplay(Display *d) {

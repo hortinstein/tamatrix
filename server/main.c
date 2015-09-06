@@ -59,9 +59,11 @@ void handleTamaPacket(int id, TamaUdpData *d, int len) {
 		client[id].connectedTo=x;
 		client[x].connectedTo=id;
 		sendto(sock, d, len, 0, (struct sockaddr *)&client[x].addr, sizeof(struct sockaddr_in));
+		printf("IRSTART type %d from %d to %d\n", (int)d->d.irs.type, id, x);
 	} else if (d->type==TAMAUDP_IRSTARTACK) {
 		y=client[id].connectedTo;
 		sendto(sock, d, len, 0, (struct sockaddr *)&client[x].addr, sizeof(struct sockaddr_in));
+		printf("IRSTARTACK type %d from %d to %d\n", (int)d->d.irs.type, id, y);
 	} else if (d->type==TAMAUDP_IRDATA) {
 		//Forward packet to connected tama
 		y=client[id].connectedTo;

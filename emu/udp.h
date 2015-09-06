@@ -6,6 +6,9 @@
 void udpInit(char *hostname);
 void udpSendDisplay(Display *d);
 void udpSendIr(char *data, int len);
-int udpTick();
+void udpTick();
+void udpSendIrstartReq(int type);
+void udpSendIrstartAck(int type);
+
 
 #endif

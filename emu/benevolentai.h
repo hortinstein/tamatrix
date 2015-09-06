@@ -6,6 +6,7 @@
 void benevolentAiInit();
 int benevolentAiRun(Display *lcd, int mspassed);
 int benevolentAiMacroRun(char *name);
-void benevolentAiReqIrComm();
+void benevolentAiReqIrComm(int type);
+void benevolentAiAckIrComm(int type);
 
 #endif

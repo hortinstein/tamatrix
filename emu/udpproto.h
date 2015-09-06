@@ -8,6 +8,8 @@
 #define TAMAUDP_IRSTARTACK 2
 #define TAMAUDP_IRDATA 3
 
+
+
 typedef struct __attribute__((packed)) {
 	uint8_t pixel[32][48];
 	uint16_t icons;

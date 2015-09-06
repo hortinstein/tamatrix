@@ -55,6 +55,7 @@ int main(int argc, char **argv) {
 	Display display;
 	int err=0;
 
+	srand(time(NULL));
 	for (i=1; i<argc; i++) {
 		if (strcmp(argv[i],"-h")==0 && argc>i+1) {
 			i++;
@@ -85,8 +86,7 @@ int main(int argc, char **argv) {
 		clock_gettime(CLOCK_MONOTONIC, &tstart);
 		tamaRun(tama, FCPU/FPS-1);
 		lcdRender(tama->dram, tama->lcd.sizex, tama->lcd.sizey, &display);
-		i=udpTick();
-		if (i) benevolentAiReqIrComm();
+		udpTick();
 		k=benevolentAiRun(&display, 1000/FPS);
 		if (!speedup || (t&15)==0) {
 			lcdShow(&display);
