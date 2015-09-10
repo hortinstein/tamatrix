@@ -289,12 +289,14 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 				irMaster=1;
 				udpSendIrstartReq(irReq);
 				baTimeMs=0;
+				timeout=1000*20;
 			} else if (i==4) {
 				//Invite other tama for a visit.
 				irReq=TAMAUDP_IRTP_VISIT;
 				irMaster=1;
 				udpSendIrstartReq(irReq);
 				baTimeMs=0;
+				timeout=1000*20;
 			}
 		} else {
 			baState=BA_IDLE;
@@ -334,8 +336,7 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 			baState=BA_RECHECKFOOD;
 		}
 	} else if (baState==BA_IRVISIT) {
-
-
+		//Erm... Just wait till timeout is done.
 	} else if (baState==BA_IRGAME) {
 		if (lcdmatch(lcd, screen_irgame1)) {
 			benevolentAiMacroRun("irgamejmp");
