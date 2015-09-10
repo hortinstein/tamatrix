@@ -236,7 +236,7 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 			baTimeMs=0; //Don't wake up to check info
 		} else if (lcdmatch(lcd, screen_alert)){
 			benevolentAiMacroRun("train");
-		} else if (baTimeMs>120*1000) {
+		} else if (baTimeMs>120*1000) { //check every 2 mins
 			//We need to check for health etc
 			baTimeMs=0;
 			baState=BA_CHECKFOOD;
