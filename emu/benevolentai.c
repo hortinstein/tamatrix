@@ -40,7 +40,7 @@ static Macro macros[]={
 	{"feedmeal", "s2,p2,p2,p2,w90,p3,p3"},
 	{"feedsnack", "s2,p2,p1,p2,p2,w90,p3,p3"},
 	{"train", "s6,p2,p2,w40"},
-	{"medicine", "s7,p2,w10,p2,w40"},  //p2 twice because sometimes it doesn't work ?!? Maybe I should increase the button press time...
+	{"medicine", "s7,p2,w40"},
 	{"loadeep", "w10,p2,p2,w20"},
 	{"updvars", "s1,p2,w10,p1,w10,m,p3"},
 	{"toilet", "w10,s3,p2,p2,w50"},
@@ -240,12 +240,6 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 			//We need to check for health etc
 			baTimeMs=0;
 			baState=BA_CHECKFOOD;
-		} else if (baTimeMs>15*1000) { //hack; ToDo: find better place to do this
-			//Invite other tama for a visit.
-			irReq=TAMAUDP_IRTP_GAME;
-			irMaster=1;
-			udpSendIrstartReq(irReq);
-			baTimeMs=0;
 		} else if (irReq) {
 			//Either we got a request for a visit, or our visit req is ack'ed.
 			if (!irMaster) udpSendIrstartAck(irReq);
@@ -274,10 +268,10 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 		if (hunger<4) {
 			benevolentAiMacroRun("feedmeal");
 			baState=BA_RECHECKFOOD;
-		} else if (happy<4) {
+		} else if (happy<5) {
 			//Bug: If Tama is congested, it doesn't want to go anywhere. Putting it into the feedsnack/playstb/...
 			//functions make it do nothing. Timeout will catch this tho'.
-			i=rand()%3;
+			i=rand()%5;
 			if (i==0) {
 				benevolentAiMacroRun("feedsnack");
 				baState=BA_RECHECKFOOD;
@@ -289,6 +283,18 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 				baState=BA_JUMP;
 				benevolentAiMacroRun("playjump");
 				timeout=1000*20;
+			} else if (i==3) {
+				//Invite other tama for a game.
+				irReq=TAMAUDP_IRTP_GAME;
+				irMaster=1;
+				udpSendIrstartReq(irReq);
+				baTimeMs=0;
+			} else if (i==4) {
+				//Invite other tama for a visit.
+				irReq=TAMAUDP_IRTP_VISIT;
+				irMaster=1;
+				udpSendIrstartReq(irReq);
+				baTimeMs=0;
 			}
 		} else {
 			baState=BA_IDLE;
