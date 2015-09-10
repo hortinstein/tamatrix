@@ -152,7 +152,7 @@ void tamaPressBtn(Tamagotchi *t, int btn) {
 	if (t->btnReleaseTm!=0) return;
 	tamaToggleBtn(t, btn);
 	t->btnPressed=btn;
-	t->btnReleaseTm=FCPU/20;
+	t->btnReleaseTm=FCPU/10;
 	t->btnReads=0;
 }
 
@@ -308,7 +308,7 @@ int tamaHwTick(Tamagotchi *t, int gran) {
 	int ien;
 
 	//Do IR ticks
-	if (irTick(gran, &t->irnx)) t->hw.portAdata&=~0xF0; else t->hw.portAdata|=0xF0;
+	if (irTick(gran, &t->irnx)) t->hw.portAdata&=~0x80; else t->hw.portAdata|=0x80;
 	if (t->irnx!=0) {
 		t->irnx-=gran;
 		if (t->irnx<0) t->irnx=0;
@@ -416,9 +416,10 @@ int tamaHwTick(Tamagotchi *t, int gran) {
 	}
 
 	//Handle stupid hackish button release...
-	if (t->btnReleaseTm!=0) {
+	if (t->btnReleaseTm>0) {
 		t->btnReleaseTm-=gran;
 		if (t->btnReleaseTm<=0) {
+			t->btnReleaseTm=0;
 			tamaToggleBtn(t, t->btnPressed);
 			tamaWakeSrc(t, (1<<0));
 			printf("Release btn %d\n", t->btnPressed);
@@ -489,8 +490,8 @@ Tamagotchi *tamaInit(unsigned char **rom, char *eepromFile) {
 	tama->cpu->Wr6502=tamaWriteCb;
 	tama->cpu->User=(void*)tama;
 	tama->hw.bankSel=0;
-	tama->hw.portAdata=0xf; //3-batlo 2-but2 1-but1 0-but0
-	tama->hw.portBdata=0xfe;	//0, 1: I2C; 3: IR send
+	tama->hw.portAdata=0xf; //7-IR recv, 3-batlo 2-but2 1-but1 0-but0
+	tama->hw.portBdata=0xfe;	//0, 1: I2C; 3: IR send,
 	tama->hw.portCdata=0xff;
 	Reset6502(tama->cpu);
 	tama->ioreg[R_CLKCTL-0x3000]=0x2; //Fosc/8 is default

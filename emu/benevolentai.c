@@ -40,7 +40,7 @@ static Macro macros[]={
 	{"feedmeal", "s2,p2,p2,p2,w90,p3,p3"},
 	{"feedsnack", "s2,p2,p1,p2,p2,w90,p3,p3"},
 	{"train", "s6,p2,p2,w40"},
-	{"medicine", "s7,p2,w40"},
+	{"medicine", "s7,p2,w10,p2,w40"},  //p2 twice because sometimes it doesn't work ?!? Maybe I should increase the button press time...
 	{"loadeep", "w10,p2,p2,w20"},
 	{"updvars", "s1,p2,w10,p1,w10,m,p3"},
 	{"toilet", "w10,s3,p2,p2,w50"},
@@ -55,6 +55,7 @@ static Macro macros[]={
 	{"irgamema", "s8,p2,p2,p2,p2"},
 	{"irvisitcl", "s8,p2,p2,p1,p2"},
 	{"irvisitma", "s8,p2,p2,p1,p2,p2"},
+	{"irgamejmp", "p2"},
 	{"tst", "s8"},
 	{"", ""}
 };
@@ -105,7 +106,7 @@ int macroRun(Display *lcd, int mspassed) {
 			if (macros[curMacro].code[macroPos]==',') macroPos++;
 			if (cmd=='p') {
 				//Press a button
-				waitTimeMs=300;
+				waitTimeMs=500;
 				return (1<<(arg-1));
 			} else if (cmd=='w') {
 				//Wait x deciseconds
@@ -330,7 +331,13 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 
 
 	} else if (baState==BA_IRGAME) {
-
+		if (lcdmatch(lcd, screen_irgame1)) {
+			benevolentAiMacroRun("irgamejmp");
+			timeout=0;
+		} else if (lcdmatch(lcd, screen_gameend)) {
+			benevolentAiMacroRun("exitgame");
+			baState=BA_IDLE;
+		}
 	}
 	return 0;
 }

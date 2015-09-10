@@ -20,3 +20,4 @@ const unsigned char *screen_gameend;
 const unsigned char *screen_jump1;
 const unsigned char *screen_jump2;
 const unsigned char *screen_doorsel;
+const unsigned char *screen_irgame1;
