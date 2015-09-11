@@ -56,7 +56,7 @@ static Macro macros[]={
 	{"irvisitcl", "s8,p2,p2,p1,p2"},
 	{"irvisitma", "s8,p2,p2,p1,p2,p2"},
 	{"irgamejmp", "p2"},
-	{"irfailexit", "p3,w10,p3,w10,p3,w10"},
+	{"irfailexit", "p3,w5,p3,w5,p3,w5,p3"},
 	{"tst", "s8"},
 	{"", ""}
 };
@@ -253,6 +253,7 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 				baState=BA_IRVISIT;
 				timeout=1000*20;
 			}
+			irReq=0;
 		} else {
 			//Take a snapshot if much changed.
 			i=getDarkPixelCnt(lcd);

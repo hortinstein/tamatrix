@@ -72,6 +72,7 @@ void handleTamaPacket(int id, TamaUdpData *d, int len) {
 		for (x=0; x<ntohs(d->d.ir.dataLen); x++) printf("%02X ", d->d.ir.data[x]);
 		printf("\n");
 	} else if (d->type==TAMAUDP_BYE) {
+		printf("Tama %d says bye. Freeing slot.\n", id);
 		shm->tama[id].lastSeq=-1;
 		return; //to stop rest of the code fiddling with lastSeq
 	}
