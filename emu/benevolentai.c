@@ -291,14 +291,14 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 				irMaster=1;
 				udpSendIrstartReq(irReq);
 				baTimeMs=0;
-				timeout=1000*20;
+				baState=BA_IDLE;
 			} else if (i==4) {
 				//Invite other tama for a visit.
 				irReq=TAMAUDP_IRTP_VISIT;
 				irMaster=1;
 				udpSendIrstartReq(irReq);
 				baTimeMs=0;
-				timeout=1000*20;
+				baState=BA_IDLE;
 			}
 		} else {
 			baState=BA_IDLE;
