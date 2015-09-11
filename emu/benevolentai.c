@@ -246,9 +246,11 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 			if (irReq==TAMAUDP_IRTP_GAME) {
 				benevolentAiMacroRun(irMaster?"irgamema":"irgamecl");
 				baState=BA_IRGAME;
+				timeout=1000*20;
 			} else if (irReq==TAMAUDP_IRTP_VISIT) {
 				benevolentAiMacroRun(irMaster?"irvisitma":"irvisitcl");
 				baState=BA_IRVISIT;
+				timeout=1000*20;
 			}
 		} else {
 			//Take a snapshot if much changed.
@@ -340,7 +342,7 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 	} else if (baState==BA_IRGAME) {
 		if (lcdmatch(lcd, screen_irgame1)) {
 			benevolentAiMacroRun("irgamejmp");
-			timeout=0;
+//			timeout=0;
 		} else if (lcdmatch(lcd, screen_gameend)) {
 			benevolentAiMacroRun("exitgame");
 			baState=BA_IDLE;
