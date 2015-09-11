@@ -170,6 +170,6 @@ Tamagotchi *tamaInit(unsigned char **rom, char *eepromFile);
 void tamaRun(Tamagotchi *tama, int cycles);
 void tamaToggleBkunk(Tamagotchi *t);
 void tamaPressBtn(Tamagotchi*t, int btn);
-
+void tamaDeinit(Tamagotchi *tama);
 
 #endif

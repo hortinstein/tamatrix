@@ -71,6 +71,9 @@ void handleTamaPacket(int id, TamaUdpData *d, int len) {
 		printf("IR data from %d to %d len %d:", id, y, ntohs(d->d.ir.dataLen));
 		for (x=0; x<ntohs(d->d.ir.dataLen); x++) printf("%02X ", d->d.ir.data[x]);
 		printf("\n");
+	} else if (d->type==TAMAUDP_BYE) {
+		shm->tama[id].lastSeq=-1;
+		return; //to stop rest of the code fiddling with lastSeq
 	}
 	p=shm->currSeq+1;
 	shm->tama[id].lastSeq=p;

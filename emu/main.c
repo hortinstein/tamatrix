@@ -14,11 +14,19 @@
 #include "udp.h"
 
 Tamagotchi *tama;
-
+int needRestart=0;
 
 void sigintHdlr(int sig)  {
-	if (tama->cpu->Trace) exit(1);
+	if (tama->cpu->Trace) {
+		printf("\n");
+		udpExit();
+		exit(1);
+	}
 	tama->cpu->Trace=1;
+}
+
+void sighupHdlr(int sig) {
+	needRestart=(rand()%1200)+1;
 }
 
 
@@ -78,6 +86,7 @@ int main(int argc, char **argv) {
 	}
 
 	signal(SIGINT, sigintHdlr);
+	signal(SIGHUP, sighupHdlr);
 	rom=loadRoms();
 	tama=tamaInit(rom, eeprom);
 	benevolentAiInit();
@@ -118,5 +127,14 @@ int main(int argc, char **argv) {
 		if (k=='s') speedup=!speedup;
 		if (k=='d') stopDisplay=!stopDisplay;
 		t++;
+		//If we receive a SIGHUP, we will wait a random amount of time and then restart.
+		if (needRestart!=0) {
+			needRestart--;
+			if (needRestart==0) {
+				udpExit();
+				tamaDeinit(tama);
+				execvp(argv[0], argv);
+			}
+		}
 	}
 }

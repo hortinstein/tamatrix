@@ -7,7 +7,7 @@
 #define TAMAUDP_IRSTART 1
 #define TAMAUDP_IRSTARTACK 2
 #define TAMAUDP_IRDATA 3
-
+#define TAMAUDP_BYE 4
 
 
 typedef struct __attribute__((packed)) {

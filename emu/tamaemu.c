@@ -477,6 +477,11 @@ byte Loop6502(register M6502 *R) {
 	return 0;
 }
 
+void tamaDeinit(Tamagotchi *tama) {
+	//ToDo: do more here
+	i2ceepromDeinit(tama->i2ceeprom);
+}
+
 Tamagotchi *tamaInit(unsigned char **rom, char *eepromFile) {
 	Tamagotchi *tama=malloc(sizeof(Tamagotchi));
 	memset(tama, 0, sizeof(Tamagotchi));

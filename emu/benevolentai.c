@@ -56,6 +56,7 @@ static Macro macros[]={
 	{"irvisitcl", "s8,p2,p2,p1,p2"},
 	{"irvisitma", "s8,p2,p2,p1,p2,p2"},
 	{"irgamejmp", "p2"},
+	{"irfailexit", "p3,w10,p3,w10,p3,w10"},
 	{"tst", "s8"},
 	{"", ""}
 };
@@ -106,7 +107,7 @@ int macroRun(Display *lcd, int mspassed) {
 			if (macros[curMacro].code[macroPos]==',') macroPos++;
 			if (cmd=='p') {
 				//Press a button
-				waitTimeMs=500;
+				waitTimeMs=1000;
 				return (1<<(arg-1));
 			} else if (cmd=='w') {
 				//Wait x deciseconds
@@ -339,10 +340,17 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 		}
 	} else if (baState==BA_IRVISIT) {
 		//Erm... Just wait till timeout is done.
+		if (lcdmatch(lcd, screen_irfail)) {
+			benevolentAiMacroRun("irfailexit");
+			baState=BA_IDLE;
+		}
 	} else if (baState==BA_IRGAME) {
 		if (lcdmatch(lcd, screen_irgame1)) {
 			benevolentAiMacroRun("irgamejmp");
 //			timeout=0;
+		} else if (lcdmatch(lcd, screen_irfail)) {
+			benevolentAiMacroRun("irfailexit");
+			baState=BA_IDLE;
 		} else if (lcdmatch(lcd, screen_gameend)) {
 			benevolentAiMacroRun("exitgame");
 			baState=BA_IDLE;

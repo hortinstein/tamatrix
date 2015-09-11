@@ -62,3 +62,9 @@ I2cEeprom *i2ceepromInit(char *filename) {
 	return e;
 }
 
+void i2ceepromDeinit(I2cEeprom *e) {
+	munmap(e->mem, 65536);
+	close(e->fd);
+	free(e);
+}
+

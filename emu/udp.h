@@ -9,6 +9,7 @@ void udpSendIr(char *data, int len);
 void udpTick();
 void udpSendIrstartReq(int type);
 void udpSendIrstartAck(int type);
+void udpExit();
 
 
 #endif

@@ -60,6 +60,14 @@ void udpTick() {
 	}
 }
 
+void udpExit() {
+	TamaUdpData packet;
+	packet.type=TAMAUDP_BYE;
+	sendto(sock, &packet, sizeof(packet), 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
+	close(sock);
+}
+
+
 void udpSendIrstartReq(int type) {
 	TamaUdpData packet;
 	packet.type=TAMAUDP_IRSTART;
