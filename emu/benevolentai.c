@@ -42,7 +42,8 @@ static Macro macros[]={
 	{"train", "s6,p2,p2,w40"},
 	{"medicine", "s7,p2,w40"},
 	{"loadeep", "w10,p2,p2,w20"},
-	{"updvars", "s1,p2,w10,p1,w10,m,p3"},
+	{"updvars", "s1,p2,w10,p1,w10"},
+	{"updexit", "p3"},
 	{"toilet", "w10,s3,p2,p2,w50"},
 	{"toiletpraise", "w10,s3,p2,p2,w50,s6,p2,p1,p2,w50"},
 	{"lightoff", "p3,w20"},
@@ -121,13 +122,6 @@ int macroRun(Display *lcd, int mspassed) {
 				oldIcon=-1;
 				iconAttempts=0;
 				return 0;
-			} else if (cmd=='m') {
-				//Assume we're on the hunger/happy screen; we can now measure the amount of heart filled.
-				hunger=0; happy=0;
-				for (i=0; i<5; i++) {
-					if (lcd->p[10][i*10+6]==3) hunger++;
-					if (lcd->p[26][i*10+6]==3) happy++;
-				}
 			} else {
 				printf("Huh? Unknown macro cmd %c (macro %d pos %d)\n", cmd, curMacro, macroPos);
 				exit(0);
@@ -167,13 +161,15 @@ static int getDarkPixelCnt(Display *lcd) {
 
 #define BA_IDLE 0
 #define BA_CHECKFOOD 1
-#define BA_FEED 2
-#define BA_RECHECKFOOD 3
-#define BA_RECHECKLESSHUNGRY 4
-#define BA_STB 5
-#define BA_JUMP 6
-#define BA_IRVISIT 7
-#define BA_IRGAME 8
+#define BA_CHECKFOOD2 2
+#define BA_FEED 3
+#define BA_RECHECKFOOD 4
+#define BA_RECHECKLESSHUNGRY 5
+#define BA_RECHECKLESSHUNGRY2 6
+#define BA_STB 7
+#define BA_JUMP 8
+#define BA_IRVISIT 9
+#define BA_IRGAME 10
 
 int baTimeMs;
 int baState=BA_IDLE;
@@ -187,7 +183,7 @@ int oldHunger;
 int oldHappy;
 
 void benevolentAiDump() {
-	char *bastates[]={"idle", "checkfood", "feed", "recheckfood", "rechecklesshungry", "shootthebug", "jump", "irvisit", "irgame"};
+	char *bastates[]={"idle", "checkfood", "checkfood2", "feed", "recheckfood", "rechecklesshungry", "rechecklesshungry2", "shootthebug", "jump", "irvisit", "irgame"};
 	printf("Current macro: ");
 	if (state==ST_IDLE) {
 		printf("None.\n");
@@ -226,6 +222,17 @@ int benevolentAiDbgCmd(char *cmd) {
 	return 1;
 }
 
+static int updateHungerHappy(Display *lcd) {
+	int i;
+	if (!lcdmatch(lcd, screen_hearts)) return 0;
+	//Assume we're on the hunger/happy screen; we can now measure the amount of heart filled.
+	hunger=0; happy=0;
+	for (i=0; i<5; i++) {
+		if (lcd->p[10][i*10+6]==3) hunger++;
+		if (lcd->p[26][i*10+6]==3) happy++;
+	}
+	return 1;
+}
 
 #define CHECKINTERVAL (120*1000)
 
@@ -289,14 +296,17 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 			}
 		}
 	} else if (baState==BA_CHECKFOOD) {
-		if (lcdmatch(lcd, screen_hearts)) {
-			benevolentAiMacroRun("updvars");
+		benevolentAiMacroRun("updvars");
+		baState=BA_CHECKFOOD2;
+	} else if (baState==BA_CHECKFOOD2) {
+		if (updateHungerHappy(lcd)) {
 			baState=BA_FEED;
 		} else {
 			//...We are not at the hearts screen. Weird.
 			baState=BA_IDLE;
 			baTimeMs=0;
 		}
+		benevolentAiMacroRun("updexit");
 	} else if (baState==BA_FEED) {
 		oldHunger=hunger;
 		oldHappy=happy;
@@ -340,6 +350,15 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 		benevolentAiMacroRun("updvars");
 		baState=BA_RECHECKLESSHUNGRY;
 	} else if (baState==BA_RECHECKLESSHUNGRY) {
+		if (updateHungerHappy(lcd)) {
+			baState=BA_FEED;
+		} else {
+			//...We are not at the hearts screen. Weird.
+			baState=BA_IDLE;
+			baTimeMs=0;
+		}
+		benevolentAiMacroRun("updexit");
+	} else if (baState==BA_RECHECKLESSHUNGRY2) {
 		if (hunger!=oldHunger || happy!=oldHappy) {
 			//Okay, we got less hungry/happy. Feed again if needed.
 			baState=BA_FEED;
