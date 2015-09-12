@@ -134,10 +134,10 @@ void tamaWakeSrc(Tamagotchi *t, int src) {
 		REG(R_WAKEFL)|=src;
 		REG(R_CLKCTL)=(REG(R_CLKCTL)&0xf8)|2;
 		clk->cpuDiv=8;
-		if (src==1) {
-			printf("Btn wake!\n");
+//		if (src==1) {
+//			printf("Btn wake!\n");
 //			t->cpu->Trace=1;
-		}
+//		}
 	}
 }
 
@@ -308,12 +308,12 @@ int tamaHwTick(Tamagotchi *t, int gran) {
 	int ien;
 
 	//Do IR ticks
-	if (irTick(gran, &t->irnx)) t->hw.portAdata&=~0x80; else t->hw.portAdata|=0x80;
 	if (t->irnx!=0) {
 		t->irnx-=gran;
 		if (t->irnx<0) t->irnx=0;
 		return gran;
 	}
+	if (irTick(gran, &t->irnx)) t->hw.portAdata&=~0x80; else t->hw.portAdata|=0x80;
 
 
 	clk->tblCtr+=gran;
@@ -421,7 +421,6 @@ int tamaHwTick(Tamagotchi *t, int gran) {
 		if (t->btnReleaseTm<=0) {
 			t->btnReleaseTm=0;
 			tamaToggleBtn(t, t->btnPressed);
-			tamaWakeSrc(t, (1<<0));
 			printf("Release btn %d\n", t->btnPressed);
 		}
 	}

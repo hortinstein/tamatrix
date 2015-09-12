@@ -33,12 +33,18 @@ function updateTama() {
 	var myReq=new Request.JSON({
 		method: 'get',
 		url: 'gettama.php',
-		onSuccess: function(resp) {
-			lastseq=resp.lastseq;
-			for (var i=0; i<resp.tama.length; i++) {
-				drawTama(resp.tama[i].id, resp.tama[i]);
-			}
+		onSuccess: function(respJson, respTxt) {
 			setTimeout("updateTama()", 100);
+			if (respTxt!="") { //yeah, dirty hack
+				lastseq=respJson.lastseq;
+					for (var i=0; i<respJson.tama.length; i++) {
+					drawTama(respJson.tama[i].id, respJson.tama[i]);
+				}
+			}
+		},
+		onError: function(text, err) {
+			//Just try again in a while.
+			setTimeout("updateTama()", 500);
 		}
 	});
 	myReq.get({"lastseq": lastseq});

@@ -52,10 +52,10 @@ static Macro macros[]={
 	{"exitgame", "p3,w90"},
 	{"stbshoot", "p2"},
 	{"dojump", "p2"},
-	{"irgamecl",  "s8,p2,p2,w9,p2"},
-	{"irvisitcl", "s8,p2,p2,p1,p2"},
-	{"irgamema",  "s8,p2,p2,w9,p2,p2"},
-	{"irvisitma", "s8,p2,p2,p1,p2,p2"},
+	{"irgamecl",  "s8,p2,p2,w1,w1,p2"},
+	{"irvisitcl", "s8,p2,p2,p1,w1,p2"},
+	{"irgamema",  "s8,p2,p2,w1,p2,w13,p2"},
+	{"irvisitma", "s8,p2,p2,p1,p2,w13,p2"},
 	{"irgamejmp", "p2"},
 	{"irfailexit", "p3,w5,p3,w5,p3,w5,p3"},
 	{"born", "w100,p3,w20,p3"},
@@ -133,7 +133,7 @@ int macroRun(Display *lcd, int mspassed) {
 		if ((arg==0 && lcd->icons==0) || (lcd->icons&(1<<(arg-1)))) {
 			state=ST_NEXT;
 		} else {
-			waitTimeMs=300;
+			waitTimeMs=200;
 			if (oldIcon==lcd->icons) {
 				//Icon didn't change. Maybe press 'back'?
 				oldIcon=-1;
@@ -296,6 +296,24 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 			}
 		}
 	} else if (baState==BA_CHECKFOOD) {
+	/*
+	Food check routine: (BA_CHECKFOOD is the entry point)
+	BA_CHECKFOOD -> updvars -> BA_CHECKFOOD2 -> measure hunger, hearts -> updexit.
+	if (food<=4)
+		BA_FEED -> feedmeal -> BA_RECHECKFOOD
+	else if (happy<5)
+		Rand:
+			feedsnack -> BA_RECHECKFOOD
+			playstb -> BA_STB -> stb etc -> BA_RECHECKFOOD
+			playjump -> BA_JUMP -> jump etc -> BA_RECHECKFOOD
+			IRTP_GAME -> BA_IDLE -> Done
+			IRTP_VISIT -> BA_IDLE -> Done
+	BA_RECHECKFOOD -> updvars -> BA_RECHECKLESSHUNGRY -> measure hunger, hearts etc -> updexit -> BA_RECHECKLESSHUNGRY2
+	if (hungry==oldhungry && happy==oldhappy)
+		BA_CHECKFOOD
+	else
+		medicine -> BA_CHECKFOOD
+	*/
 		benevolentAiMacroRun("updvars");
 		baState=BA_CHECKFOOD2;
 	} else if (baState==BA_CHECKFOOD2) {
@@ -351,7 +369,7 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 		baState=BA_RECHECKLESSHUNGRY;
 	} else if (baState==BA_RECHECKLESSHUNGRY) {
 		if (updateHungerHappy(lcd)) {
-			baState=BA_FEED;
+			baState=BA_RECHECKLESSHUNGRY2;
 		} else {
 			//...We are not at the hearts screen. Weird.
 			baState=BA_IDLE;
@@ -361,11 +379,11 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 	} else if (baState==BA_RECHECKLESSHUNGRY2) {
 		if (hunger!=oldHunger || happy!=oldHappy) {
 			//Okay, we got less hungry/happy. Feed again if needed.
-			baState=BA_FEED;
+			baState=BA_CHECKFOOD;
 		} else {
 			//Hmm, doesn't want to eat. Maybe it's sick?
 			benevolentAiMacroRun("medicine");
-			baState=BA_FEED;
+			baState=BA_CHECKFOOD;
 		}
 	} else if (baState==BA_STB) {
 		if (lcdmatchMovable(lcd, screen_stb1,-25,0) || lcdmatchMovable(lcd, screen_stb2,-25,0)|| lcdmatchMovable(lcd, screen_stb3,-25,0) || lcdmatchMovable(lcd, screen_stb4,-25,0)) {

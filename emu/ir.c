@@ -23,7 +23,7 @@ static int totalTicks;
 
 void irRecv(char *data, int len) {
 	if (len>32) return;
-	fprintf(stderr, "Got IR data from UDP, len=%d. Curr: sendPos=%d\n", len, sendPos);
+	fprintf(stderr, "Got IR data from UDP, len=%d. Curr: sendPos=%d. Ticks since send: %d\n", len, sendPos, ticks);
 	memcpy(sendData, data, len);
 	sendLen=len;
 	sendPos=-1; 
@@ -37,16 +37,17 @@ void irActive(int isOn) {
 }
 
 //IR timing
-#define TICKS_HI_IDLE		160
+#define TICKS_HI_IDLE		140 //threshold for start
 #define TICKS_LO_ZERO		17 //threshold between 0 and 1
-#define TICKS_SENDHI		10
-#define TICKS_SENDLOZERO	12
-#define TICKS_SENDLOONE		24
+#define TICKS_SENDHI		9
+#define TICKS_SENDLOZERO	11
+#define TICKS_SENDLOONE		22
+//Hmmm... master is 160, slave is 190...
 #define TICKS_START_HI		190
 #define TICKS_START_LO		42
-#define TICKS_END_HI		24
+#define TICKS_END_HI		23
 
-//This is called every 2048 clock cycles and returns the output of the IR receiver
+//This is called every [gran] clock cycles and returns the output of the IR receiver
 int irTick(int noticks, int *irNX) {
 	int b;
 	currClkTick+=noticks;
@@ -117,11 +118,15 @@ int irTick(int noticks, int *irNX) {
 		ticks=0;
 		oldLight=seenLight;
 	}
+
 	ticks++;
-	if (ticks>TICKS_SENDLOONE*2 && recvPos>0) {
+
+//	if (ticks>TICKS_SENDLOONE*2 && recvPos>0) {
+	if (seenLight==1 && ticks>TICKS_END_HI && recvPos>0) {
 //		printf("Sending data over IR: %d bytes, bitpos=%d", recvPos, bit);
 		udpSendIr(recvData, recvPos);
 		recvPos=-1;
+		totalTicks+=TICKS_END_HI;
 		//Okay, we just collected the IR data sent by this tama and sent it to the server. That
 		//will send it to another tama, which will then replay it to the software. The problem is
 		//that that will take some time, while in reality, the other tama would've been done receiving
@@ -129,7 +134,9 @@ int irTick(int noticks, int *irNX) {
 		//the execution of this tama for as long as it took to send the IR stream. That way, the
 		//situation is back to what it would have been in real life as soon as execution resumes:
 		//this tama just finished sending the data and the other tama just finished receiving it.
-		*irNX+=(totalTicks*IRTICK_MAX);
+		fprintf(stderr, "Transmit ended: %d bytes. Took %d ticks.\n", recvPos, totalTicks);
+		*irNX+=(totalTicks*IRTICK_MAX)*0.8; //*1.1 works
+		ticks=0;
 	}
 	seenLight=0;
 	return recvActive;
