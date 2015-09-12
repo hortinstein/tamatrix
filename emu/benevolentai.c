@@ -51,12 +51,14 @@ static Macro macros[]={
 	{"exitgame", "p3,w90"},
 	{"stbshoot", "p2"},
 	{"dojump", "p2"},
-	{"irgamecl", "s8,p2,p2,p2"},
-	{"irgamema", "s8,p2,p2,p2,p2"},
+	{"irgamecl",  "s8,p2,p2,w9,p2"},
 	{"irvisitcl", "s8,p2,p2,p1,p2"},
+	{"irgamema",  "s8,p2,p2,w9,p2,p2"},
 	{"irvisitma", "s8,p2,p2,p1,p2,p2"},
 	{"irgamejmp", "p2"},
 	{"irfailexit", "p3,w5,p3,w5,p3,w5,p3"},
+	{"born", "w100,p3,w20,p3"},
+	{"cuddle", "s0,p3,w100"},
 	{"tst", "s8"},
 	{"", ""}
 };
@@ -83,7 +85,6 @@ void benevolentAiInit() {
 	state=ST_IDLE;
 	benevolentAiMacroRun("loadeep");
 }
-
 
 //Returns a bitmap of buttons if the macro requires pressing one, or -1 if no macro is running.
 int macroRun(Display *lcd, int mspassed) {
@@ -135,7 +136,7 @@ int macroRun(Display *lcd, int mspassed) {
 	} else if (state==ST_ICONSEL) {
 		iconAttempts++;
 		if (iconAttempts==15) state=ST_NEXT; //Bail out.
-		if (lcd->icons&(1<<(arg-1))) {
+		if ((arg==0 && lcd->icons==0) || (lcd->icons&(1<<(arg-1)))) {
 			state=ST_NEXT;
 		} else {
 			waitTimeMs=300;
@@ -208,6 +209,26 @@ void benevolentAiAckIrComm(int type) {
 }
 
 
+int benevolentAiDbgCmd(char *cmd) {
+	if (strcmp(cmd, "IRG")==0) {
+		irReq=TAMAUDP_IRTP_GAME;
+		irMaster=1;
+		udpSendIrstartReq(irReq);
+		baTimeMs=0;
+	} else if (strcmp(cmd, "IRV")==0) {
+		irReq=TAMAUDP_IRTP_VISIT;
+		irMaster=1;
+		udpSendIrstartReq(irReq);
+		baTimeMs=0;
+	} else {
+		printf("Commands: irg, irv\n");
+	}
+	return 1;
+}
+
+
+#define CHECKINTERVAL (120*1000)
+
 int benevolentAiRun(Display *lcd, int mspassed) {
 	int i;
 	int r=macroRun(lcd, mspassed);
@@ -229,15 +250,19 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 			benevolentAiMacroRun("toiletpraise");
 		} else if (lcdmatch(lcd, screen_sick1) || lcdmatch(lcd, screen_sick2)){
 			benevolentAiMacroRun("medicine");
+		} else if (lcdmatch(lcd, screen_born1) || lcdmatch(lcd, screen_born2)){
+			benevolentAiMacroRun("born");
 		} else if (lcdmatchMovable(lcd, screen_sleep1, -16, 2) || lcdmatchMovable(lcd, screen_sleep2, -2, 2)) {
 			benevolentAiMacroRun("lightoff");
 			baTimeMs=0;
+		} else if (baTimeMs<(CHECKINTERVAL-3000) && ((rand()%300000)<mspassed)) {
+			benevolentAiMacroRun("cuddle");
 		} else if (getDarkPixelCnt(lcd)>1000) {
 			//We turned off the light.
 			baTimeMs=0; //Don't wake up to check info
 		} else if (lcdmatch(lcd, screen_alert)){
 			benevolentAiMacroRun("train");
-		} else if (baTimeMs>120*1000) { //check every 2 mins
+		} else if (baTimeMs>CHECKINTERVAL || (lcd->icons&(1<<9))) { //check every CHECKINTERVAL ms or if tama wantsa attention
 			//We need to check for health etc
 			baTimeMs=0;
 			baState=BA_CHECKFOOD;
@@ -264,8 +289,14 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 			}
 		}
 	} else if (baState==BA_CHECKFOOD) {
-		benevolentAiMacroRun("updvars");
-		baState=BA_FEED;
+		if (lcdmatch(lcd, screen_hearts)) {
+			benevolentAiMacroRun("updvars");
+			baState=BA_FEED;
+		} else {
+			//...We are not at the hearts screen. Weird.
+			baState=BA_IDLE;
+			baTimeMs=0;
+		}
 	} else if (baState==BA_FEED) {
 		oldHunger=hunger;
 		oldHappy=happy;

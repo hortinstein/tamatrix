@@ -184,6 +184,7 @@ byte Debug6502(M6502 *R)
 		printf("p x        : Press button x\n");
 		printf("e macroname: Execute given macro name\n");
 		printf("l filename : Dump lcd data to file\n");
+		printf("a cmd      : AI testcommand\n");
         printf("?,h        : Show this help text\n");
         printf("q          : Exit emulation\n");
         break;
@@ -260,6 +261,11 @@ byte Debug6502(M6502 *R)
         printf("Hw dump:\n");
         tamaDumpHw(R);
         break;
+      case 'A':
+		if (benevolentAiDbgCmd(S+2)) {
+			R->Trace=0;
+			return 1;
+		}
       case 'E':
         if (benevolentAiMacroRun(S+2)) {
 			R->Trace=0;
