@@ -109,7 +109,7 @@ int macroRun(Display *lcd, int mspassed) {
 			if (macros[curMacro].code[macroPos]==',') macroPos++;
 			if (cmd=='p') {
 				//Press a button
-				waitTimeMs=1000;
+				waitTimeMs=300;
 				return (1<<(arg-1));
 			} else if (cmd=='w') {
 				//Wait x deciseconds
