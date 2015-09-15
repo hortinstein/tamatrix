@@ -106,7 +106,7 @@ int irTick(int noticks, int *irNX) {
 			}
 		} else {
 			// IR goes low->hi
-			fprintf(stderr, "Hi %02d lo %02d (%d) bit %d byte %d\n", hiTime, ticks, (ticks>TICKS_LO_ZERO)?1:0,
+			fprintf(stderr, "Hi %02d lo %02d (%d) bit %d byte %d\n", hiTime, ticks, (ticks>TICKS_LO_ZERO_TH)?1:0,
 					bit, recvPos);
 			if (hiTime>TICKS_HI_IDLE_TH) {
 				bit=0; val=0;
