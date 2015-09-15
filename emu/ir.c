@@ -23,7 +23,7 @@ static int totalTicks;
 
 void irRecv(char *data, int len) {
 	if (len>32) return;
-	fprintf(stderr, "Got IR data from UDP, len=%d. Curr: sendPos=%d. Ticks since send: %d\n", len, sendPos, ticks);
+	fprintf(stderr, "UDP->Tama, len=%d. Curr: sendPos=%d. Ticks since send: %d\n", len, sendPos, ticks);
 	memcpy(sendData, data, len);
 	sendLen=len;
 	sendPos=-1; 
@@ -43,7 +43,7 @@ void irActive(int isOn) {
 #define TICKS_SENDLOZERO	11
 #define TICKS_SENDLOONE		22
 //Hmmm... master is 160, slave is 190...
-#define TICKS_START_HI		190
+#define TICKS_START_HI		170
 #define TICKS_START_LO		42
 #define TICKS_END_HI		23
 
@@ -123,7 +123,7 @@ int irTick(int noticks, int *irNX) {
 
 //	if (ticks>TICKS_SENDLOONE*2 && recvPos>0) {
 	if (seenLight==1 && ticks>TICKS_END_HI && recvPos>0) {
-//		printf("Sending data over IR: %d bytes, bitpos=%d", recvPos, bit);
+		fprintf(stderr, "Transmit (Tama->udp) ended: %d bytes. Took %d ticks.\n", recvPos, totalTicks);
 		udpSendIr(recvData, recvPos);
 		recvPos=-1;
 		totalTicks+=TICKS_END_HI;
@@ -134,8 +134,7 @@ int irTick(int noticks, int *irNX) {
 		//the execution of this tama for as long as it took to send the IR stream. That way, the
 		//situation is back to what it would have been in real life as soon as execution resumes:
 		//this tama just finished sending the data and the other tama just finished receiving it.
-		fprintf(stderr, "Transmit ended: %d bytes. Took %d ticks.\n", recvPos, totalTicks);
-		*irNX+=(totalTicks*IRTICK_MAX)*0.8; //*1.1 works
+		*irNX+=(totalTicks*IRTICK_MAX)*0.4; //*1.1 works
 		ticks=0;
 	}
 	seenLight=0;

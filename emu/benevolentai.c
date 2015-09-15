@@ -52,10 +52,10 @@ static Macro macros[]={
 	{"exitgame", "p3,w90"},
 	{"stbshoot", "p2"},
 	{"dojump", "p2"},
-	{"irgamecl",  "s8,p2,p2,w1,w1,p2"},
-	{"irvisitcl", "s8,p2,p2,p1,w1,p2"},
-	{"irgamema",  "s8,p2,p2,w1,p2,w13,p2"},
-	{"irvisitma", "s8,p2,p2,p1,p2,w13,p2"},
+	{"irgamecl",  "s8,p2,p2,w1,w10,p2"},
+	{"irvisitcl", "s8,p2,p2,p1,w10,p2"},
+	{"irgamema",  "s8,p2,p2,w1,p2,w1,p2"},
+	{"irvisitma", "s8,p2,p2,p1,p2,w1,p2"},
 	{"irgamejmp", "p2"},
 	{"irfailexit", "p3,w5,p3,w5,p3,w5,p3"},
 	{"born", "w100,p3,w20,p3"},
@@ -269,7 +269,7 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 			baTimeMs=0; //Don't wake up to check info
 		} else if (lcdmatch(lcd, screen_alert)){
 			benevolentAiMacroRun("train");
-		} else if (baTimeMs>CHECKINTERVAL || (lcd->icons&(1<<9))) { //check every CHECKINTERVAL ms or if tama wantsa attention
+		} else if (baTimeMs>CHECKINTERVAL || (lcd->icons&(1<<9))) { //check every CHECKINTERVAL ms or if tama wants a attention
 			//We need to check for health etc
 			baTimeMs=0;
 			baState=BA_CHECKFOOD;
