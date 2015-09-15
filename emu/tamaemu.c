@@ -308,12 +308,12 @@ int tamaHwTick(Tamagotchi *t, int gran) {
 	int ien;
 
 	//Do IR ticks
+	if (irTick(gran, &t->irnx)) t->hw.portAdata&=~0xf0; else t->hw.portAdata|=0xf0;
 	if (t->irnx!=0) {
 		t->irnx-=gran;
 		if (t->irnx<0) t->irnx=0;
 		return gran;
 	}
-	if (irTick(gran, &t->irnx)) t->hw.portAdata&=~0x80; else t->hw.portAdata|=0x80;
 
 
 	clk->tblCtr+=gran;

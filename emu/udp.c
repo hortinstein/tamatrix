@@ -55,7 +55,7 @@ void udpTick() {
 		} else if (packet.type==TAMAUDP_IRSTARTACK) {
 			benevolentAiAckIrComm(packet.d.irs.type);
 		} else if (packet.type==TAMAUDP_IRDATA) {
-			irRecv(packet.d.ir.data, ntohs(packet.d.ir.dataLen), ntohs(packet.d.ir.startPulseLen));
+			irRecv(packet.d.ir.data, ntohs(packet.d.ir.dataLen));//, ntohs(packet.d.ir.startPulseLen));
 		}
 	}
 }

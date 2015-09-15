@@ -2,6 +2,12 @@
 #include <string.h>
 #include "udp.h"
 
+
+/*
+Yes, this code is very sucky, but it cost me half an eternity to get working. Don't try to 'fix' it
+unless you know what you are doing!
+*/
+
 static int oldLight=0;
 static int seenLight=0;
 static int ticks=0;
@@ -14,20 +20,17 @@ static int recvActive=0;
 static char sendData[32];
 //SendPos: -2: inactive, -1 - sending sync pulse, 0-n: sending bit
 static int sendPos=-2, sendLen, sendTick;
-static int sendStartPulse=0;
 
 static char recvData[32];
 static int recvPos=-1;
 static int totalTicks;
-static int recvStartPulse;
 
 #define IRTICK_MAX ((16000000/38000))
 
-void irRecv(char *data, int len, int startPulseLen) {
+void irRecv(char *data, int len) {
 	if (len>32) return;
-	fprintf(stderr, "UDP->Tama, len=%d. Curr: sendPos=%d. Ticks since send: %d\n", len, sendPos, ticks);
+	fprintf(stderr, "Got IR data from UDP, len=%d. Curr: sendPos=%d\n", len, sendPos);
 	memcpy(sendData, data, len);
-	sendStartPulse=startPulseLen;
 	sendLen=len;
 	sendPos=-1; 
 	sendTick=0;
@@ -40,16 +43,17 @@ void irActive(int isOn) {
 }
 
 //IR timing
-#define TICKS_HI_IDLE_TH	160 //threshold for start
+#define TICKS_HI_IDLE_TH	150
 #define TICKS_LO_ZERO_TH	17 //threshold between 0 and 1
 #define TICKS_SENDHI		10
 #define TICKS_SENDLOZERO	12
 #define TICKS_SENDLOONE		24
+#define TICKS_START_HI		180
 #define TICKS_START_LO		42
 #define TICKS_END_HI		24
 #define TICKS_END_HI_TH		21
 
-//This is called every [gran] clock cycles and returns the output of the IR receiver
+//This is called every 2048 clock cycles and returns the output of the IR receiver
 int irTick(int noticks, int *irNX) {
 	int b;
 	currClkTick+=noticks;
@@ -59,11 +63,11 @@ int irTick(int noticks, int *irNX) {
 	if (sendPos!=-2) {
 		sendTick++;
 		if (sendPos==-1) {
-			if (sendTick<sendStartPulse) {
+			if (sendTick<TICKS_START_HI) {
 				recvActive=1;
-			} else if (sendTick==sendStartPulse) {
+			} else if (sendTick==TICKS_START_HI) {
 				recvActive=0;
-			} else if (sendTick==sendStartPulse+TICKS_START_LO) {
+			} else if (sendTick==TICKS_START_HI+TICKS_START_LO) {
 				recvActive=1;
 				sendPos=0;
 				sendTick=0;
@@ -88,7 +92,6 @@ int irTick(int noticks, int *irNX) {
 				}
 			}
 		}
-		fprintf(stderr, "Sendpos %d (B%d b%d) tick %d recv %d\n", sendPos, sendPos>>3, sendPos&7, sendTick, recvActive);
 	}
 
 //	seenLight=recvActive; //HACK
@@ -96,13 +99,11 @@ int irTick(int noticks, int *irNX) {
 		if (oldLight==1) {
 			// IR goes high->low
 			hiTime=ticks;
-			if (ticks>TICKS_END_HI_TH && recvPos!=-1) {
-				totalTicks+=ticks;
-				fprintf(stderr, "Transmit (Tama->udp) ended: %d bytes. Took %d ticks.\n", recvPos, totalTicks);
-				udpSendIr(recvData, recvPos, recvStartPulse);
+			if (ticks>TICKS_END_HI_TH && recvPos>0) {
+				udpSendIr(recvData, recvPos, 0);
 				recvPos=-1;
-				*irNX+=(totalTicks*IRTICK_MAX);
-				ticks=0;
+				totalTicks+=ticks;
+				*irNX+=(totalTicks*IRTICK_MAX)*1.1;
 			}
 		} else {
 			// IR goes low->hi
@@ -111,17 +112,11 @@ int irTick(int noticks, int *irNX) {
 			if (hiTime>TICKS_HI_IDLE_TH) {
 				bit=0; val=0;
 				recvPos=0;
-				totalTicks=hiTime;
-				recvStartPulse=hiTime;
+				totalTicks=0;
 //				fprintf(stderr, "IR: start\n");
 			} else if (recvPos!=-1) {
 				val>>=1;
-				if (ticks>TICKS_LO_ZERO_TH) {
-					val|=0x80;
-					totalTicks+=TICKS_SENDHI+TICKS_SENDLOONE;
-				} else {
-					totalTicks+=TICKS_SENDHI+TICKS_SENDLOZERO;
-				}
+				if (ticks>TICKS_LO_ZERO_TH) val|=0x80;
 				bit++;
 				if (bit==8) {
 					recvData[recvPos++]=val;
@@ -131,11 +126,26 @@ int irTick(int noticks, int *irNX) {
 				}
 			}
 		}
+		totalTicks+=ticks;
 		ticks=0;
 		oldLight=seenLight;
 	}
 	ticks++;
-
+/*
+	if (ticks>TICKS_SENDLOONE*2 && recvPos>0) {
+//		printf("Sending data over IR: %d bytes, bitpos=%d", recvPos, bit);
+		udpSendIr(recvData, recvPos, 0);
+		recvPos=-1;
+		//Okay, we just collected the IR data sent by this tama and sent it to the server. That
+		//will send it to another tama, which will then replay it to the software. The problem is
+		//that that will take some time, while in reality, the other tama would've been done receiving
+		//when this one is done sending. To compensate for that, after receiving IR data, we will stop
+		//the execution of this tama for as long as it took to send the IR stream. That way, the
+		//situation is back to what it would have been in real life as soon as execution resumes:
+		//this tama just finished sending the data and the other tama just finished receiving it.
+		*irNX+=(totalTicks*IRTICK_MAX);
+	}
+*/
 	seenLight=0;
 	return recvActive;
 }
