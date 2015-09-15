@@ -17,6 +17,7 @@ typedef struct __attribute__((packed)) {
 
 typedef struct __attribute__((packed)) {
 	uint16_t dataLen;
+	uint16_t startPulseLen;
 	uint8_t data[32];
 } TamaIrData;
 

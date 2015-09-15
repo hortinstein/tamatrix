@@ -68,7 +68,7 @@ void handleTamaPacket(int id, TamaUdpData *d, int len) {
 		//Forward packet to connected tama
 		y=client[id].connectedTo;
 		sendto(sock, d, len, 0, (struct sockaddr *)&client[y].addr, sizeof(struct sockaddr_in));
-		printf("IR data from %d to %d len %d:", id, y, ntohs(d->d.ir.dataLen));
+		printf("IR data from %d to %d len %d spulse %d:", id, y, ntohs(d->d.ir.dataLen), ntohs(d->d.ir.startPulseLen));
 		for (x=0; x<ntohs(d->d.ir.dataLen); x++) printf("%02X ", d->d.ir.data[x]);
 		printf("\n");
 	} else if (d->type==TAMAUDP_BYE) {

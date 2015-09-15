@@ -14,17 +14,20 @@ static int recvActive=0;
 static char sendData[32];
 //SendPos: -2: inactive, -1 - sending sync pulse, 0-n: sending bit
 static int sendPos=-2, sendLen, sendTick;
+static int sendStartPulse=0;
 
 static char recvData[32];
 static int recvPos=-1;
 static int totalTicks;
+static int recvStartPulse;
 
 #define IRTICK_MAX ((16000000/38000))
 
-void irRecv(char *data, int len) {
+void irRecv(char *data, int len, int startPulseLen) {
 	if (len>32) return;
 	fprintf(stderr, "UDP->Tama, len=%d. Curr: sendPos=%d. Ticks since send: %d\n", len, sendPos, ticks);
 	memcpy(sendData, data, len);
+	sendStartPulse=startPulseLen;
 	sendLen=len;
 	sendPos=-1; 
 	sendTick=0;
@@ -57,11 +60,11 @@ int irTick(int noticks, int *irNX) {
 	if (sendPos!=-2) {
 		sendTick++;
 		if (sendPos==-1) {
-			if (sendTick<TICKS_START_HI) {
+			if (sendTick<sendStartPulse) {
 				recvActive=1;
-			} else if (sendTick==TICKS_START_HI) {
+			} else if (sendTick==sendStartPulse) {
 				recvActive=0;
-			} else if (sendTick==TICKS_START_HI+TICKS_START_LO) {
+			} else if (sendTick==sendStartPulse+TICKS_START_LO) {
 				recvActive=1;
 				sendPos=0;
 				sendTick=0;
@@ -93,6 +96,14 @@ int irTick(int noticks, int *irNX) {
 		if (oldLight==1) {
 			// IR goes high->low
 			hiTime=ticks;
+			if (ticks>TICKS_END_HI && recvPos!=-1) {
+				totalTicks+=ticks;
+				fprintf(stderr, "Transmit (Tama->udp) ended: %d bytes. Took %d ticks.\n", recvPos, totalTicks);
+				udpSendIr(recvData, recvPos, recvStartPulse);
+				recvPos=-1;
+				*irNX+=(totalTicks*IRTICK_MAX)*1.2;
+				ticks=0;
+			}
 		} else {
 			// IR goes low->hi
 			fprintf(stderr, "Hi %02d lo %02d (%d) bit %d byte %d\n", hiTime, ticks, (ticks>TICKS_LO_ZERO)?1:0,
@@ -101,10 +112,16 @@ int irTick(int noticks, int *irNX) {
 				bit=0; val=0;
 				recvPos=0;
 				totalTicks=hiTime;
+				recvStartPulse=hiTime;
 //				fprintf(stderr, "IR: start\n");
 			} else if (recvPos!=-1) {
 				val>>=1;
-				if (ticks>TICKS_LO_ZERO) val|=0x80;
+				if (ticks>TICKS_LO_ZERO) {
+					val|=0x80;
+					totalTicks+=TICKS_SENDHI+TICKS_SENDLOONE;
+				} else {
+					totalTicks+=TICKS_SENDHI+TICKS_SENDLOZERO;
+				}
 				bit++;
 				if (bit==8) {
 					recvData[recvPos++]=val;
@@ -114,19 +131,18 @@ int irTick(int noticks, int *irNX) {
 				}
 			}
 		}
-		totalTicks+=ticks;
 		ticks=0;
 		oldLight=seenLight;
 	}
-
 	ticks++;
 
+/*
 //	if (ticks>TICKS_SENDLOONE*2 && recvPos>0) {
-	if (seenLight==1 && ticks>TICKS_END_HI && recvPos>0) {
+	if (seenLight==0 && oldLight==1 && ticks>TICKS_END_HI && recvPos>0) {
 		fprintf(stderr, "Transmit (Tama->udp) ended: %d bytes. Took %d ticks.\n", recvPos, totalTicks);
-		udpSendIr(recvData, recvPos);
+		udpSendIr(recvData, recvPos, recvStartPulse);
 		recvPos=-1;
-		totalTicks+=TICKS_END_HI;
+		totalTicks+=ticks;
 		//Okay, we just collected the IR data sent by this tama and sent it to the server. That
 		//will send it to another tama, which will then replay it to the software. The problem is
 		//that that will take some time, while in reality, the other tama would've been done receiving
@@ -134,9 +150,10 @@ int irTick(int noticks, int *irNX) {
 		//the execution of this tama for as long as it took to send the IR stream. That way, the
 		//situation is back to what it would have been in real life as soon as execution resumes:
 		//this tama just finished sending the data and the other tama just finished receiving it.
-		*irNX+=(totalTicks*IRTICK_MAX)*0.4; //*1.1 works
+		*irNX+=(totalTicks*IRTICK_MAX); //*1.1 works
 		ticks=0;
 	}
+*/
 	seenLight=0;
 	return recvActive;
 }

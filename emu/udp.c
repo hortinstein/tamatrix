@@ -55,7 +55,7 @@ void udpTick() {
 		} else if (packet.type==TAMAUDP_IRSTARTACK) {
 			benevolentAiAckIrComm(packet.d.irs.type);
 		} else if (packet.type==TAMAUDP_IRDATA) {
-			irRecv(packet.d.ir.data, ntohs(packet.d.ir.dataLen));
+			irRecv(packet.d.ir.data, ntohs(packet.d.ir.dataLen), ntohs(packet.d.ir.startPulseLen));
 		}
 	}
 }
@@ -106,9 +106,10 @@ void udpSendDisplay(Display *d) {
 	sendto(sock, &packet, sizeof(packet), 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
 }
 
-void udpSendIr(char *data, int len) {
+void udpSendIr(char *data, int len,  int startPulseLen) {
 	TamaUdpData packet;
 	packet.type=TAMAUDP_IRDATA;
+	packet.d.ir.startPulseLen=htons(startPulseLen);
 	memcpy(packet.d.ir.data, data, len);
 	packet.d.ir.dataLen=htons(len);
 	sendto(sock, &packet, sizeof(packet), 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
