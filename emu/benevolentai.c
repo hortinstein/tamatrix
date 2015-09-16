@@ -262,11 +262,11 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 		} else if (lcdmatchMovable(lcd, screen_sleep1, -16, 2) || lcdmatchMovable(lcd, screen_sleep2, -2, 2)) {
 			benevolentAiMacroRun("lightoff");
 			baTimeMs=0;
-		} else if (baTimeMs<(CHECKINTERVAL-3000) && ((rand()%300000)<mspassed)) {
-			benevolentAiMacroRun("cuddle");
 		} else if (getDarkPixelCnt(lcd)>1000) {
 			//We turned off the light.
 			baTimeMs=0; //Don't wake up to check info
+		} else if (baTimeMs<(CHECKINTERVAL-3000) && ((rand()%300000)<mspassed)) {
+			benevolentAiMacroRun("cuddle");
 		} else if (lcdmatch(lcd, screen_alert)){
 			benevolentAiMacroRun("train");
 		} else if (baTimeMs>CHECKINTERVAL || (lcd->icons&(1<<9))) { //check every CHECKINTERVAL ms or if tama wants a attention
