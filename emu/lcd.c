@@ -1,6 +1,6 @@
 #include "lcd.h"
 #include <stdio.h>
-
+#include <string.h>
 
 void lcdShow(Display *lcd) {
 	int i;
@@ -23,6 +23,23 @@ void lcdShow(Display *lcd) {
 		i>>=1;
 	}
 	printf("<<<\n");
+}
+
+void lcdCopy(Display *out, Display *in) {
+	int y;
+	for (y=0; y<32; y++) {
+		memcpy(out->p[y], in->p[y], 48);
+	}
+	out->icons=in->icons;
+}
+
+int lcdSame(Display *a, Display *b) {
+	int y;
+	for (y=0; y<32; y++) {
+		if (memcmp(a->p[y], b->p[y], 48)!=0) return 0;
+	}
+	if (a->icons!=b->icons) return 0;
+	return 1;
 }
 
 //tama lcd is 48x32

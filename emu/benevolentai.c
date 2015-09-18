@@ -29,7 +29,7 @@ long thisAlgorithmBecomingSkynetCost=999999999;
 #define ST_IDLE 0
 #define ST_NEXT 1
 #define ST_ICONSEL 2
-
+#define ST_BTNCHECK 3
 
 #define TAMAUDP_IRTP_CANCEL	0
 #define TAMAUDP_IRTP_VISIT	1
@@ -89,7 +89,8 @@ void benevolentAiInit() {
 
 //Returns a bitmap of buttons if the macro requires pressing one, or -1 if no macro is running.
 int macroRun(Display *lcd, int mspassed) {
-	int i;
+	static Display oldLcd;
+	static int btnPressedNo;
 	if (state==ST_IDLE) return -1;
 	waitTimeMs-=mspassed;
 	if (waitTimeMs>0) return 0;
@@ -109,7 +110,10 @@ int macroRun(Display *lcd, int mspassed) {
 			if (macros[curMacro].code[macroPos]==',') macroPos++;
 			if (cmd=='p') {
 				//Press a button
+				lcdCopy(&oldLcd, lcd);
 				waitTimeMs=300;
+				state=ST_BTNCHECK;
+				btnPressedNo=arg-1;
 				return (1<<(arg-1));
 			} else if (cmd=='w') {
 				//Wait x deciseconds
@@ -126,6 +130,15 @@ int macroRun(Display *lcd, int mspassed) {
 				printf("Huh? Unknown macro cmd %c (macro %d pos %d)\n", cmd, curMacro, macroPos);
 				exit(0);
 			}
+		}
+	} else if (state==ST_BTNCHECK) {
+		if (!lcdSame(&oldLcd, lcd)) {
+			state=ST_NEXT;
+		} else {
+			//Lcd is the same. Maybe the press didn't take. Just try again once more.
+			waitTimeMs=300;
+			state=ST_NEXT;
+			return (1<<btnPressedNo);
 		}
 	} else if (state==ST_ICONSEL) {
 		iconAttempts++;
