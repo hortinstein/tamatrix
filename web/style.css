@@ -1,0 +1,32 @@
+
+body {
+	background-color: #595946;
+/*	background-color: #f4ffeb; */
+}
+
+#tamas {
+	width: 950px;
+}
+
+.tamanewline {
+	display: block;
+}
+
+.tamaoffset {
+	display: inline-block;
+	background: transparent;
+	width: 149px;
+	height: 50px;
+}
+
+.tamahex {
+	display: inline-block;
+	background: transparent url("hexagon.png") no-repeat;
+	width: 270px;
+	height: 330px;
+	padding-top: 85px;
+	padding-left: 15px;
+	margin: 6px 6px -140px 6px;
+
+}
+

@@ -7,15 +7,28 @@ function drawTama(id, tama) {
 	var ctx;
 	if (tamaCanvas.length<=id) {
 		var c=new Element('canvas', {
-			'height': 320,
-			'width': 480
+			'height': 160,
+			'width': 240,
+			'class': 'tamalcd'
 		});
-		c.inject($("tamas"));
+		var d=new Element('div', {
+			'class': 'tamahex'
+		});
+		c.inject(d);
+		d.inject($("tamas"));
+		if ((id%5)==2) {
+			var e=new Element('div', {
+				'class': 'tamaoffset'
+			});
+			e.inject($("tamas"));
+		}
+		
 		tamaCanvas[id]=c;
+		ctx=tamaCanvas[id].getContext("2d");
+		ctx.fillStyle="#efffe0";
+		ctx.fillRect(0,0,240,160);
 	}
 	ctx=tamaCanvas[id].getContext("2d");
-	ctx.fillStyle="#efffe0";
-	ctx.fillRect(0,0,480,320);
 	var p=0;
 	for (y=0; y<32; y++) {
 		for (x=0; x<48; x++) {
@@ -24,7 +37,7 @@ function drawTama(id, tama) {
 			if (c=='B') ctx.fillStyle="#A0B090";
 			if (c=='C') ctx.fillStyle="#707058";
 			if (c=='D') ctx.fillStyle="#102000";
-			ctx.fillRect(x*10, y*10, 9, 9);
+			ctx.fillRect(x*5, y*5, 4, 4);
 		}
 	}
 }
