@@ -278,10 +278,20 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 		} else if (getDarkPixelCnt(lcd)>1000) {
 			//We turned off the light.
 			baTimeMs=0; //Don't wake up to check info
-		} else if (baTimeMs<(CHECKINTERVAL-3000) && ((rand()%300000)<mspassed)) {
-			benevolentAiMacroRun("cuddle");
 		} else if (lcdmatch(lcd, screen_alert)){
 			benevolentAiMacroRun("train");
+		} else if (baTimeMs<(CHECKINTERVAL-3000) && ((rand()%300000)<mspassed)) {
+			benevolentAiMacroRun("cuddle");
+		} else if (baTimeMs<(CHECKINTERVAL-20000) && ((rand()%1000000)<mspassed)) {
+				//Invite other tama for a game.
+				irReq=TAMAUDP_IRTP_GAME;
+				irMaster=1;
+				udpSendIrstartReq(irReq);
+		} else if (baTimeMs<(CHECKINTERVAL-20000) && ((rand()%1000000)<mspassed)) {
+				//Invite other tama for a visit.
+				irReq=TAMAUDP_IRTP_VISIT;
+				irMaster=1;
+				udpSendIrstartReq(irReq);
 		} else if (baTimeMs>CHECKINTERVAL || (lcd->icons&(1<<9))) { //check every CHECKINTERVAL ms or if tama wants a attention
 			//We need to check for health etc
 			baTimeMs=0;
