@@ -1,7 +1,22 @@
 
 var lastseq=0;
 var tamaCanvas=Array();
+var bigId=-1;
 
+function showBigTama(id) {
+	if (id!=-1) {
+		bigId=id;
+		var ctx=$("bigTama").getContext("2d");
+		ctx.fillStyle="#efffe0";
+		ctx.fillRect(0,0,720,480);
+		$("ovl").style.visibility="visible";
+		$("bigTama").style.visibility="visible";
+		lastseq=0; //force update
+	} else {
+		$("ovl").style.visibility="hidden";
+		$("bigTama").style.visibility="hidden";
+	}
+}
 
 function drawTama(id, tama) {
 	var ctx;
@@ -11,6 +26,9 @@ function drawTama(id, tama) {
 			'width': 240,
 			'class': 'tamalcd'
 		});
+		c.addEvent('click', function(id) {
+			showBigTama(id);
+		}.bind(c,id));
 		var d=new Element('div', {
 			'class': 'tamahex'
 		});
@@ -24,20 +42,27 @@ function drawTama(id, tama) {
 		}
 		
 		tamaCanvas[id]=c;
-		ctx=tamaCanvas[id].getContext("2d");
+		var ctx=tamaCanvas[id].getContext("2d");
 		ctx.fillStyle="#efffe0";
 		ctx.fillRect(0,0,240,160);
 	}
-	ctx=tamaCanvas[id].getContext("2d");
+	var ctx=tamaCanvas[id].getContext("2d");
+	var bigCtx=$("bigTama").getContext("2d");
 	var p=0;
-	for (y=0; y<32; y++) {
-		for (x=0; x<48; x++) {
+	for (var y=0; y<32; y++) {
+		for (var x=0; x<48; x++) {
 			var c=tama.pixels.substr(p++, 1);
-			if (c=='A') ctx.fillStyle="#efffe0";
-			if (c=='B') ctx.fillStyle="#A0B090";
-			if (c=='C') ctx.fillStyle="#707058";
-			if (c=='D') ctx.fillStyle="#102000";
+			var st;
+			if (c=='A') st="#efffe0";
+			if (c=='B') st="#A0B090";
+			if (c=='C') st="#707058";
+			if (c=='D') st="#102000";
+			ctx.fillStyle=st;
 			ctx.fillRect(x*5, y*5, 4, 4);
+			if (bigId==id) {
+				bigCtx.fillStyle=st;
+				bigCtx.fillRect(x*15, y*15, 14, 14);
+			}
 		}
 	}
 }
@@ -66,4 +91,10 @@ function updateTama() {
 
 window.addEvent('domready', function() {
 	updateTama();
+	$("ovl").addEvent("click", function() {
+		showBigTama(-1);
+	});
+	$("bigTama").addEvent("click", function() {
+		showBigTama(-1);
+	});
 });

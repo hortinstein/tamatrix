@@ -27,6 +27,28 @@ body {
 	padding-top: 85px;
 	padding-left: 15px;
 	margin: 6px 6px -140px 6px;
-
 }
 
+.tamalcd {
+	cursor: pointer;
+}
+
+#ovl {
+	background-color: rgba(0,0,0,0.8);
+	position: fixed;
+	visibility: hidden;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	right: 0;
+	text-align: center;
+	z-index: 1000;
+	display: block;
+}
+
+#bigTama {
+	position: relative;
+	visibility: hidden;
+	margin: 10% auto;
+	z-index: 1001;
+}
