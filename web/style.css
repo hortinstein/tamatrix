@@ -1,12 +1,16 @@
 
 body {
-	background-color: #595946;
+/*	background-color: #595946;*/
 /*	background-color: #f4ffeb; */
+	background-color: 0;
+	font-family: sans;
 }
 
+/*
 #tamas {
 	width: 950px;
 }
+*/
 
 .tamanewline {
 	display: block;
@@ -52,3 +56,54 @@ body {
 	margin: 10% auto;
 	z-index: 1001;
 }
+
+#content {
+	background-color: #595946;
+	width: 900px;
+	margin: auto;
+	padding-left: 10px;
+	padding-right: 10px;
+	padding-bottom: 100px;
+}
+
+#header {
+	background-color: #efffe0;
+}
+
+#text {
+	background-color: #efffe0;
+	width: auto;
+	padding: 10px;
+	margin: 0px;
+}
+
+
+#header ul {
+	margin-top: -10px;
+}
+
+#header li {
+	display: inline;
+	margin-right: 20px;
+}
+
+a:link {
+	color: #707058;
+}
+
+a:visited {
+	color: #707058;
+}
+
+a:hover {
+	color: #a0b090;
+}
+
+a:active {
+	color: #707058;
+}
+
+a {
+	text-decoration: none;
+}
+
