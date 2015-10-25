@@ -7,6 +7,8 @@
 
 int PAGECT=20;
 
+#define BUTTONRELEASETIME FCPU/15;
+
 #define REG(x) t->ioreg[(x)-0x3000]
 
 static void tamaDumpBin(int val, int bits) {
@@ -84,7 +86,7 @@ unsigned char **loadRoms() {
 		fseek(f, 16*1024, SEEK_SET);
 		roms[i]=malloc(32*1024);
 		l=fread(roms[i], 1, 32768, f);
-		printf("ROM loaded: %s - %d bytes\n", fname, l);
+//		printf("ROM loaded: %s - %d bytes\n", fname, l);
 //		printf("%x %x\n", roms[i][0x3ffc], roms[i][0x3ffd]);
 		fclose(f);
 	}
@@ -129,15 +131,10 @@ void tamaToggleBkunk(Tamagotchi *t) {
 void tamaWakeSrc(Tamagotchi *t, int src) {
 //	TamaHw *hw=&t->hw;
 	TamaClk *clk=&t->clk;
-	REG(R_WAKEFL)|=src; //...maybe?
+	REG(R_WAKEFL)|=src;
 	if (((REG(R_CLKCTL)&7)==7) && ((REG(R_WAKEEN))&src)!=0) {
-		REG(R_WAKEFL)|=src;
 		REG(R_CLKCTL)=(REG(R_CLKCTL)&0xf8)|2;
 		clk->cpuDiv=8;
-//		if (src==1) {
-//			printf("Btn wake!\n");
-//			t->cpu->Trace=1;
-//		}
 	}
 }
 
@@ -152,7 +149,7 @@ void tamaPressBtn(Tamagotchi *t, int btn) {
 	if (t->btnReleaseTm!=0) return;
 	tamaToggleBtn(t, btn);
 	t->btnPressed=btn;
-	t->btnReleaseTm=FCPU/20;
+	t->btnReleaseTm=BUTTONRELEASETIME;
 	t->btnReads=0;
 }
 
@@ -187,6 +184,7 @@ uint8_t ioRead(M6502 *cpu, register word addr) {
 //		printf("PA: %X\n", hw->portAdata);
 //		if (t->bkUnk) cpu->Trace=1;
 		t->btnReads++;
+		hw->portALastRead=hw->portAdata;
 		return hw->portAdata;
 	} else if (addr==R_PBDATA) {
 		return hw->portBdata;
@@ -280,6 +278,11 @@ void ioWrite(M6502 *cpu, register word addr, register byte val) {
 	} else if (addr==R_TIMBASE || addr==R_TIMCTL || addr==R_CLKCTL) {
 		t->ioreg[addr-0x3000]=val;
 		tamaClkRecalc(t);
+		if (t->clk.cpuDiv==0 && (REG(R_WAKEFL)&REG(R_WAKEEN))) {
+			//Wake up immediately
+			REG(R_CLKCTL)=(REG(R_CLKCTL)&0xf8)|2;
+			t->clk.cpuDiv=8;
+		}
 	} else if (addr==R_WAKEFL) {
 		//Make sure the write _clears_ the flag
 		val=t->ioreg[R_WAKEFL-0x3000]&(~(val));
@@ -423,6 +426,10 @@ int tamaHwTick(Tamagotchi *t, int gran) {
 			tamaToggleBtn(t, t->btnPressed);
 			printf("Release btn %d\n", t->btnPressed);
 		}
+	}
+	
+	if (hw->portALastRead!=hw->portAdata) {
+		tamaWakeSrc(t, 1<<0);
 	}
 
 	//Now would be a good time to run the cpu, if needed.

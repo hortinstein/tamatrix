@@ -127,6 +127,7 @@ typedef struct {
 typedef struct {
 	uint8_t bankSel;
 	uint8_t portAdata;
+	uint8_t portALastRead;
 	uint8_t portBdata;
 	uint8_t portCdata;
 	uint8_t portAout;
