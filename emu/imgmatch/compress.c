@@ -5,8 +5,8 @@
 #define FLAG_SKIP 0x80
 
 int main(int argc, char **argv) {
-	char out[48*32];
-	char line[1024];
+	unsigned char out[48*32];
+	unsigned char line[1024];
 	int p=0;
 	int x,y;
 	int rle=0;
@@ -32,6 +32,11 @@ int main(int argc, char **argv) {
 			}
 		}
 	}
+	if (rle!=0) {
+		out[p++]=rle|FLAG_SKIP;
+		rle=0;
+	}
+	
 	printf("static const unsigned char %s_data[]={", argv[1]);
 	for (x=0; x<p; x++) {
 		if ((x&15)==0) {
