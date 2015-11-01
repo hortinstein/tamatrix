@@ -48,7 +48,7 @@ int getKey() {
 }
 
 
-#define FPS 10
+#define FPS 15
 
 int main(int argc, char **argv) {
 	unsigned char **rom;

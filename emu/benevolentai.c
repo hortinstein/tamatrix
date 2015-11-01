@@ -1,6 +1,7 @@
 #include "benevolentai.h"
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <stdio.h>
 #include "lcdmatch.h"
 #include "screens.h"
@@ -111,7 +112,7 @@ int macroRun(Display *lcd, int mspassed) {
 			if (cmd=='p') {
 				//Press a button
 				lcdCopy(&oldLcd, lcd);
-				waitTimeMs=300;
+				waitTimeMs=400;
 				state=ST_BTNCHECK;
 				btnPressedNo=arg-1;
 				return (1<<(arg-1));
@@ -184,7 +185,10 @@ static int getDarkPixelCnt(Display *lcd) {
 #define BA_IRVISIT 9
 #define BA_IRGAME 10
 
-int baTimeMs;
+
+#define CHECKINTERVAL (120*1000)
+
+int baTimeMs=CHECKINTERVAL-5000;
 int baState=BA_IDLE;
 int oldPxCnt;
 int timeout=0;
@@ -237,7 +241,10 @@ int benevolentAiDbgCmd(char *cmd) {
 
 static int updateHungerHappy(Display *lcd) {
 	int i;
-	if (!lcdmatch(lcd, screen_hearts)) return 0;
+	if (!lcdmatch(lcd, screen_hearts)) {
+		printf("WtF? Not at hungry/happy screen :/ \n");
+		return 0;
+	}
 	//Assume we're on the hunger/happy screen; we can now measure the amount of heart filled.
 	hunger=0; happy=0;
 	for (i=0; i<5; i++) {
@@ -246,8 +253,6 @@ static int updateHungerHappy(Display *lcd) {
 	}
 	return 1;
 }
-
-#define CHECKINTERVAL (120*1000)
 
 int benevolentAiRun(Display *lcd, int mspassed) {
 	int i;
@@ -283,15 +288,15 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 		} else if (baTimeMs<(CHECKINTERVAL-3000) && ((rand()%300000)<mspassed)) {
 			benevolentAiMacroRun("cuddle");
 		} else if (baTimeMs<(CHECKINTERVAL-20000) && ((rand()%1000000)<mspassed)) {
-				//Invite other tama for a game.
-				irReq=TAMAUDP_IRTP_GAME;
-				irMaster=1;
-				udpSendIrstartReq(irReq);
+			//Invite other tama for a game.
+			irReq=TAMAUDP_IRTP_GAME;
+			irMaster=1;
+			udpSendIrstartReq(irReq);
 		} else if (baTimeMs<(CHECKINTERVAL-20000) && ((rand()%1000000)<mspassed)) {
-				//Invite other tama for a visit.
-				irReq=TAMAUDP_IRTP_VISIT;
-				irMaster=1;
-				udpSendIrstartReq(irReq);
+			//Invite other tama for a visit.
+			irReq=TAMAUDP_IRTP_VISIT;
+			irMaster=1;
+			udpSendIrstartReq(irReq);
 		} else if (baTimeMs>CHECKINTERVAL || (lcd->icons&(1<<9))) { //check every CHECKINTERVAL ms or if tama wants a attention
 			//We need to check for health etc
 			baTimeMs=0;
@@ -313,7 +318,7 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 			//Take a snapshot if much changed.
 			i=getDarkPixelCnt(lcd);
 			if (i<(oldPxCnt-10) || i>(oldPxCnt+10)) {
-				printf("Pix cnt %d, was %d\n", i, oldPxCnt);
+//				printf("Pix cnt %d, was %d\n", i, oldPxCnt);
 				oldPxCnt=(i+oldPxCnt)/2;
 				return 8;
 			}
@@ -402,11 +407,11 @@ int benevolentAiRun(Display *lcd, int mspassed) {
 	} else if (baState==BA_RECHECKLESSHUNGRY2) {
 		if (hunger!=oldHunger || happy!=oldHappy) {
 			//Okay, we got less hungry/happy. Feed again if needed.
-			baState=BA_CHECKFOOD;
+			baState=BA_FEED;
 		} else {
 			//Hmm, doesn't want to eat. Maybe it's sick?
 			benevolentAiMacroRun("medicine");
-			baState=BA_CHECKFOOD;
+			baState=BA_FEED;
 		}
 	} else if (baState==BA_STB) {
 		if (lcdmatchMovable(lcd, screen_stb1,-25,0) || lcdmatchMovable(lcd, screen_stb2,-25,0)|| lcdmatchMovable(lcd, screen_stb3,-25,0) || lcdmatchMovable(lcd, screen_stb4,-25,0)) {
