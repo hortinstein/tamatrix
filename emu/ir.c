@@ -100,6 +100,17 @@ int irTick(int noticks, int *irNX) {
 			// IR goes high->low
 			hiTime=ticks;
 			if (ticks>TICKS_END_HI_TH && recvPos>0) {
+				//Okay, we just collected the IR data sent by this tama and sent it to the server. That
+				//will send it to another tama, which will then replay it to the software. The problem is
+				//that that will take some time, while in reality, the other tama would've been done receiving
+				//when this one is done sending. To compensate for that, after receiving IR data, we will stop
+				//the execution of this tama for as long as it took to send the IR stream. That way, the
+				//situation is back to what it would have been in real life as soon as execution resumes:
+				//this tama just finished sending the data and the other tama just finished receiving it.
+				//
+				//Actually, we need to wait twice as long: we just did tama1->AI, but we need to compensate
+				//for AI->tama2 and tama2->AI before we start receiving. Somehow, entering a factor 2 doesn't quite
+				//work though... we'll stick with 1.1 for now.
 				udpSendIr(recvData, recvPos, 0);
 				recvPos=-1;
 				totalTicks+=ticks;
@@ -131,21 +142,6 @@ int irTick(int noticks, int *irNX) {
 		oldLight=seenLight;
 	}
 	ticks++;
-/*
-	if (ticks>TICKS_SENDLOONE*2 && recvPos>0) {
-//		printf("Sending data over IR: %d bytes, bitpos=%d", recvPos, bit);
-		udpSendIr(recvData, recvPos, 0);
-		recvPos=-1;
-		//Okay, we just collected the IR data sent by this tama and sent it to the server. That
-		//will send it to another tama, which will then replay it to the software. The problem is
-		//that that will take some time, while in reality, the other tama would've been done receiving
-		//when this one is done sending. To compensate for that, after receiving IR data, we will stop
-		//the execution of this tama for as long as it took to send the IR stream. That way, the
-		//situation is back to what it would have been in real life as soon as execution resumes:
-		//this tama just finished sending the data and the other tama just finished receiving it.
-		*irNX+=(totalTicks*IRTICK_MAX);
-	}
-*/
 	seenLight=0;
 	return recvActive;
 }
