@@ -5,7 +5,7 @@
 #include "i2c.h"
 #include "ir.h"
 
-int PAGECT=20;
+int PAGECT=22;
 
 #define BUTTONRELEASETIME FCPU/15;
 
@@ -74,21 +74,43 @@ unsigned char **loadRoms(char *dir) {
 	char fname[128];
 	unsigned char **roms;
 	int i, l;
+	int noLoaded=0;
 	FILE *f;
+	long len;
 	roms=malloc(sizeof(char*)*PAGECT);
 	for (i=0; i<PAGECT; i++) {
 		sprintf(fname, "%s/p%d.bin", dir, i);
 		f=fopen(fname, "rb");
 		if (f==NULL) {
-			perror(fname);
-			exit(1);
+			sprintf(fname, "%s/p%d", dir, i);
+			f=fopen(fname, "rb");
+			if (f==NULL) {
+				perror(fname);
+				//Newer Tamas have empty pages. Don't crap out if one is missing.
+//				exit(1);
+			}
 		}
-		fseek(f, 16*1024, SEEK_SET);
 		roms[i]=malloc(32*1024);
-		l=fread(roms[i], 1, 32768, f);
-//		printf("ROM loaded: %s - %d bytes\n", fname, l);
-//		printf("%x %x\n", roms[i][0x3ffc], roms[i][0x3ffd]);
-		fclose(f);
+		if (f!=NULL) {
+			fseek(f, 0, SEEK_END);
+			len=ftell(f);
+			if (len>32768) {
+				//Probably a dump of the entire 6502 address space. Seek to the start of the page.
+				fseek(f, 0x4000, SEEK_SET);
+			} else {
+				//Dump of only the page.
+				fseek(f, 0, SEEK_SET);
+			}
+			l=fread(roms[i], 1, 32768, f);
+//			printf("ROM loaded: %s - %d bytes\n", fname, l);
+//			printf("%x %x\n", roms[i][0x3ffc], roms[i][0x3ffd]);
+			fclose(f);
+			noLoaded++;
+		}
+	}
+	if (noLoaded<2) {
+		printf("Couldn't load ROM pages! Bailing out.\n");
+		exit(1);
 	}
 	return roms;
 }
