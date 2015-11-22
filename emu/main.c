@@ -60,6 +60,7 @@ int main(int argc, char **argv) {
 	int t=0;
 	char *eeprom="tama.eep";
 	char *host="127.0.0.1";
+	char *romdir="rom";
 	struct timespec tstart, tend;
 	Display display;
 	int err=0;
@@ -72,6 +73,9 @@ int main(int argc, char **argv) {
 		} else if (strcmp(argv[i],"-e")==0 && argc>i+1) {
 			i++;
 			eeprom=argv[i];
+		} else if (strcmp(argv[i],"-r")==0 && argc>i+1) {
+			i++;
+			romdir=argv[i];
 		} else if (strcmp(argv[i], "-n")==0) {
 			aiEnabled=0;
 		} else {
@@ -85,13 +89,14 @@ int main(int argc, char **argv) {
 		printf("Usage: %s [options]\n", argv[0]);
 		printf("-h host - change tamaserver host address (def 127.0.0.1)\n");
 		printf("-e eeprom.eep - change eeprom file (def tama.eep)\n");
+		printf("-r rom/ - change rom dir\n");
 		printf("-n - disable AI\n");
 		exit(0);
 	}
 
 	signal(SIGINT, sigintHdlr);
 	signal(SIGHUP, sighupHdlr);
-	rom=loadRoms();
+	rom=loadRoms(romdir);
 	tama=tamaInit(rom, eeprom);
 	benevolentAiInit();
 	udpInit(host);

@@ -165,7 +165,7 @@ typedef struct {
 } Tamagotchi;
 
 
-unsigned char **loadRoms();
+unsigned char **loadRoms(char *dir);
 void freeRoms(unsigned char **roms);
 Tamagotchi *tamaInit(unsigned char **rom, char *eepromFile);
 void tamaRun(Tamagotchi *tama, int cycles);

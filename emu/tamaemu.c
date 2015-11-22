@@ -70,14 +70,14 @@ void tamaDumpHw(M6502 *cpu) {
 	printf("\n");
 }
 
-unsigned char **loadRoms() {
+unsigned char **loadRoms(char *dir) {
 	char fname[128];
 	unsigned char **roms;
 	int i, l;
 	FILE *f;
 	roms=malloc(sizeof(char*)*PAGECT);
 	for (i=0; i<PAGECT; i++) {
-		sprintf(fname, "rom/p%d.bin", i);
+		sprintf(fname, "%s/p%d.bin", dir, i);
 		f=fopen(fname, "rb");
 		if (f==NULL) {
 			perror(fname);
