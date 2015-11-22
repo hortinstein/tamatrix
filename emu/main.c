@@ -56,6 +56,7 @@ int main(int argc, char **argv) {
 	int k, i;
 	int speedup=0;
 	int stopDisplay=0;
+	int aiEnabled=1;
 	int t=0;
 	char *eeprom="tama.eep";
 	char *host="127.0.0.1";
@@ -71,6 +72,8 @@ int main(int argc, char **argv) {
 		} else if (strcmp(argv[i],"-e")==0 && argc>i+1) {
 			i++;
 			eeprom=argv[i];
+		} else if (strcmp(argv[i], "-n")==0) {
+			aiEnabled=0;
 		} else {
 			printf("Unrecognized option - %s\n", argv[i]);
 			err=1;
@@ -82,6 +85,7 @@ int main(int argc, char **argv) {
 		printf("Usage: %s [options]\n", argv[0]);
 		printf("-h host - change tamaserver host address (def 127.0.0.1)\n");
 		printf("-e eeprom.eep - change eeprom file (def tama.eep)\n");
+		printf("-n - disable AI\n");
 		exit(0);
 	}
 
@@ -96,7 +100,11 @@ int main(int argc, char **argv) {
 		tamaRun(tama, FCPU/FPS-1);
 		lcdRender(tama->dram, tama->lcd.sizex, tama->lcd.sizey, &display);
 		udpTick();
-		k=benevolentAiRun(&display, 1000/FPS);
+		if (aiEnabled) {
+			k=benevolentAiRun(&display, 1000/FPS);
+		} else {
+			k=0;
+		}
 		if (!speedup || (t&15)==0) {
 			lcdShow(&display);
 			udpSendDisplay(&display);
