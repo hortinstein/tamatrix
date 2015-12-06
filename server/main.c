@@ -124,8 +124,6 @@ int main(int argc, char** argv) {
 		shm->tama[i].lastSeq=-1;
 	}
 
-		client[0].connectedTo=1;
-		client[1].connectedTo=0;
 
 	while(1) {
 		al=sizeof(claddr);

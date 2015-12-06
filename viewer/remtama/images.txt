@@ -1,0 +1,4 @@
+wifi.bmp
+a.bmp
+b.bmp
+c.bmp

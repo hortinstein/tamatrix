@@ -1,0 +1,6 @@
+[submodule "libesphttpd"]
+	path = libesphttpd
+	url = ssh://git@spritesmods.com:/opt/git/libesphttpd.git
+[submodule "esphttpclient"]
+	path = esphttpclient
+	url = https://github.com/Caerbannog/esphttpclient
