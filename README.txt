@@ -15,6 +15,13 @@ Run 'make' to make this. It shouldn't require anything special except gcc. Run t
 it up. You can control the Tamagotchi yourself by pressing the 1, 2 or 3 key followed by an enter. Control-C
 will drop you into a debugging prompt, press control-C again to quit the emulator.
 
+When you first start up the emulator, it may be wise to do it with the -n parameter. This disables the AI. The
+very first thing that happens on an empty EEPROM is the Tamagotchi asking to set the time and date, and the
+AI doesn't know how to do that. The trick is to start tamaemu with the -n parameter, then use the 1, 2 and 3
+keys (followed by an enter!) to set the date and name your Tamagotchi. There's no need to set the true time 
+and date, by the way, gameplay doesn't seem to be dependent on that. After you've done this and the Tamagotchi
+has hatched, you can re-start tamaemu without the -n option and the AI should be able to do its thing.
+
 ***The Tamagotchi server***
 Just run 'make' and start it up. The Tamagotchis running on the same server will automatically connect to it.
 
